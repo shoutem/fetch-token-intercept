@@ -1,4 +1,4 @@
-import { formatBearer, parseBearer } from './helpers/tokenFormatter';
+import { parseBearer } from './helpers/tokenFormatter';
 import {
   ENVIRONMENT_IS_REACT_NATIVE,
   ENVIRONMENT_IS_NODE,
@@ -13,8 +13,10 @@ import {
 let config = {
   prepareRefreshTokenRequest: null,
   shouldIntercept: null,
+  shouldInvalidateAccessToken: null,
   getAccessTokenFromResponse: null,
   setRequestAuthorization: null,
+  onAccessTokenAcquired: null,
 };
 
 let tokens = {
@@ -50,15 +52,13 @@ function attach(env) {
 }
 
 function runRefreshTokenPromise() {
-  return new Promise((resolve, reject) => {
-    console.log('RT_START');
+  refreshAccessTokenPromise = new Promise((resolve, reject) => {
     // prepare request
     const tokenRequest = config.prepareRefreshTokenRequest(tokens.refreshToken);
 
     // fetch new token with refresh token
-    fetch(tokenRequest)
+    return fetch(tokenRequest)
       .then(response => {
-        console.log('RT_END');
         refreshAccessTokenPromise = null;
 
         if (response.status !== STATUS_OK) {
@@ -75,16 +75,20 @@ function runRefreshTokenPromise() {
       .then(token => {
         tokens.accessToken = token;
 
+        if (config.onAccessTokenAcquired) {
+          config.onAccessTokenAcquired(token);
+        }
+
         resolve(token);
       })
       .catch(error => {
-        console.log('RT_ERR');
         tokens.accessToken = null;
         tokens.refreshToken = null;
 
         reject(error);
       });
   });
+  return refreshAccessTokenPromise;
 }
 
 function convertToRequest(args) {
@@ -99,12 +103,16 @@ function shouldFetchAccessToken(request) {
     return false;
   }
 
-  const requestAccessToken = parseBearer(request.headers.authorization);
-  if (requestAccessToken && requestAccessToken !== tokens.accessToken) {
+  const requestAccessToken = parseBearer(request.headers.get('authorization'));
+  if (requestAccessToken !== tokens.accessToken) {
     return false;
   }
 
   return true;
+}
+
+function isAuthorized() {
+  return !!tokens.refreshToken;
 }
 
 function fetchInterceptor(fetch, ...args) {
@@ -115,7 +123,7 @@ function fetchInterceptor(fetch, ...args) {
   }
 
   // check whether we should ignore this request
-  if (!tokens.refreshToken || !config.shouldIntercept(request)) {
+  if (!isAuthorized() || !config.shouldIntercept(request)) {
     return fetch(request);
   }
 
@@ -130,22 +138,24 @@ function fetchInterceptor(fetch, ...args) {
       Promise.resolve(request)
         .then((request) => config.setRequestAuthorization(request, tokens.accessToken))
         // initial fetch
-        .then(() => {
-          console.log('REQUEST', request.path, request.headers);
-          return fetch(request);
-        })
+        .then(() => fetch(request))
         .then(response => {
+          // check if response invalidates access token
+          if (config.shouldInvalidateAccessToken && config.shouldInvalidateAccessToken(response)) {
+            tokens.accessToken = null;
+            runRefreshTokenPromise();
+          }
+
           // if response is not unauthorized we don't care about it
           if (response.status !== STATUS_UNAUTHORIZED) {
             return response;
           }
 
-          console.log('RESPONSE', response.url);
           // if we received unauthorized and current request's token is same as access token
           // we should refresh the token. otherwise we should just repeat request since
           // some other request already refreshed access token
           if (shouldFetchAccessToken(request)) {
-            refreshAccessTokenPromise = runRefreshTokenPromise();
+            runRefreshTokenPromise();
           }
 
           // if refresh token promise is null, it already finished before this request
@@ -155,17 +165,16 @@ function fetchInterceptor(fetch, ...args) {
           return returnPromise
             .then(() => {
               // repeat request if tokens don't match
-              if (parseBearer(request.headers.authorization) !== tokens.accessToken) {
+              if (parseBearer(request.headers.get('authorization')) !== tokens.accessToken) {
                 const authorizedRequest = config.setRequestAuthorization(request, tokens.accessToken);
-                console.log('RETRY', authorizedRequest.url, authorizedRequest.headers);
                 return fetch(authorizedRequest);
               }
+
               // otherwise return initial response
               return response;
             })
             // fetching refresh token failed
             .catch(error => {
-              // we return the initial response because we failed to refresh token
               if (error.message === ERROR_REFRESH_TOKEN_EXPIRED) {
                 outerResolve(response);
               } else {
@@ -177,12 +186,30 @@ function fetchInterceptor(fetch, ...args) {
         .then(outerResolve)
         .catch(outerReject);
 
-    // if refresh token is currently running all incoming fetches should chain to
-    // on refresh token promise
-    if (refreshAccessTokenPromise) {
-      refreshAccessTokenPromise
+    // if access token is not resolved yet
+    if (!tokens.accessToken) {
+      // check if we are alredy fetching it
+      if (!refreshAccessTokenPromise) {
+        // as a side-effect refreshTokenPromise is set
+        runRefreshTokenPromise();
+      }
+
+      // chain to refresh token promise (pending)
+      return refreshAccessTokenPromise
         .then(() => {
           return runInnerPromise();
+        })
+        .catch(error => {
+          if (error.message === ERROR_INVALID_CONFIG) {
+            outerReject(error);
+          } else {
+            // if we fail to resolve refresh token, and it's not internal error
+            // just pass the request normally
+            return fetch(request)
+              .then(outerResolve)
+              .catch(outerReject);
+          }
+
         });
     }
 
@@ -195,7 +222,7 @@ function fetchInterceptor(fetch, ...args) {
  * Configures fetch token intercept
  */
 export function configure(initConfig) {
-  Object.assign(config, initConfig);
+  config = { ...config, ...initConfig };
 }
 
 /**
@@ -204,8 +231,7 @@ export function configure(initConfig) {
  * @param accessToken
  */
 export function authorize(refreshToken, accessToken) {
-  Object.assign(tokens, { refreshToken, accessToken });
-  runRefreshTokenPromise();
+  tokens = { ...tokens, refreshToken, accessToken };
 }
 
 /**

@@ -1,14 +1,22 @@
 export function formatBearer(token) {
-  return `Bearer ${token}`;
-}
-
-export function parseBearer(authorizationHeader) {
-  if (!authorizationHeader) {
+  if (!token) {
     return null;
   }
 
-  const parts = authorizationHeader.split(' ');
-  const token = parts === 2 ? parts[1] : null;
+  return `Bearer ${token}`;
+}
+
+export function parseBearer(authorizationHeaderValue) {
+  if (!authorizationHeaderValue) {
+    return null;
+  }
+
+  const parts = authorizationHeaderValue.split(' ');
+  if(parts.length !== 2) {
+    return null;
+  }
+
+  const token = parts[1];
   if (token === 'undefined') {
     return null;
   }

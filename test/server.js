@@ -20,6 +20,10 @@ app.get('/401/:id', function(req, res) {
     if (token === EXPIRED_TOKEN) {
       res.status(401).send();
     } else if (token === VALID_TOKEN) {
+      if (req.query.invalidate){
+        res.set('invalidates-token', true);
+      }
+
       res.json({ 'value': req.params.id });
     } else {
       res.status(401).send();
@@ -43,9 +47,10 @@ app.get('/token', function(req, res) {
     // exchange refresh token for new access token
     if (req.header('authorization') === `Bearer ${currentRefreshToken}`){
       currentToken = VALID_TOKEN;
+
       res.json({
         'accessToken': currentToken
-      })
+      });
     } else {
       res.status(401).send();
     }

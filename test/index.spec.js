@@ -3,12 +3,126 @@ import { expect } from 'chai';
 import * as server from './server';
 import { delayPromise } from './promiseHelpers';
 import { formatBearer } from '../src/helpers/tokenFormatter';
+import { ERROR_INVALID_CONFIG } from '../src/const';
 import * as fetchInterceptor from '../src/index';
 
+const emptyConfiguration = {
+  prepareRefreshTokenRequest: () => {},
+  shouldIntercept: request => false,
+  getAccessTokenFromResponse: () => {},
+  setRequestAuthorization: () => {}
+};
+
 describe('fetch-intercept', function () {
+  describe('should validate config', () => {
+    beforeEach(done => {
+      server.start(done);
+    });
+
+    afterEach(done => {
+      server.stop(done);
+    });
+
+    it('getAccessTokenFromResponse is not set throws', () => {
+      fetchInterceptor.configure({
+        ...emptyConfiguration,
+        shouldIntercept: null,
+      });
+
+      expect(() => fetch('http://localhost:5000/200')).to.throw(Error, ERROR_INVALID_CONFIG);
+    });
+
+    it('setRequestAuthorization is not set throws', (done) => {
+      fetchInterceptor.configure({
+        ...emptyConfiguration,
+        shouldIntercept: request => true,
+        setRequestAuthorization: null,
+      });
+      fetchInterceptor.authorize('refresh_token');
+
+      fetch('http://localhost:5000/200').then(() => {
+        done('Should not be called')
+      }).catch(error => {
+        expect(error).to.not.be.null;
+        expect(error).to.be.instanceof(Error);
+        expect(error.message).to.be.equal(ERROR_INVALID_CONFIG);
+
+        done();
+      })
+    });
+
+    it('getAccessTokenFromResponse is not set throws', (done) => {
+      fetchInterceptor.configure({
+        ...emptyConfiguration,
+        prepareRefreshTokenRequest: (refreshToken) => new Request('http://localhost:5000/token', {
+          headers: {
+            authorization: `Bearer ${refreshToken}`
+          },
+        }),
+        shouldIntercept: request => request.url !== 'http://localhost:5000/token',
+        getAccessTokenFromResponse: null,
+      });
+      fetchInterceptor.authorize('refresh_token');
+
+      fetch('http://localhost:5000/401/1').then(() => {
+        done('Should not be called')
+      }).catch(error => {
+        expect(error).to.not.be.null;
+        expect(error).to.be.instanceof(Error);
+        expect(error.message).to.be.equal(ERROR_INVALID_CONFIG);
+
+        done();
+      })
+    });
+  });
+
+  describe('should not change default fetch behaviour', () => {
+    fetchInterceptor.configure({
+      prepareRefreshTokenRequest: () => {},
+      shouldIntercept: request => false,
+      getAccessTokenFromResponse: response => {},
+      setRequestAuthorization: (request, token) => {}
+    });
+
+    describe('server is running', () => {
+      beforeEach(done => {
+        server.start(done);
+      });
+      afterEach(done => {
+        server.stop(done);
+      });
+
+      it('fetches with success for 200 response', done => {
+        fetch('http://localhost:5000/200').then(() => {
+          done();
+        }).catch(err => {
+          done(err);
+        })
+      });
+
+      it('fetches with success for 401 response', done => {
+        fetch('http://localhost:5000/401/1').then(() => {
+          done();
+        }).catch(err => {
+          done(err);
+        })
+      });
+    });
+
+    describe('server is not running', () => {
+      it('fails on server not started', done => {
+        fetch('http://localhost:5000/401/1').then(() => {
+          done('Should not end here');
+        }).catch(() => {
+          done();
+        })
+      });
+    });
+  });
 
   describe('refresh token is valid', () => {
     let accessToken = null;
+
     beforeEach(done => {
       fetchInterceptor.configure({
         prepareRefreshTokenRequest: refreshToken =>
@@ -21,7 +135,8 @@ describe('fetch-intercept', function () {
         setRequestAuthorization: (request, token) => {
           request.headers.set('authorization', formatBearer(token));
           return request;
-        }
+        },
+        shouldInvalidateAccessToken: response => response.headers.get('invalidates-token'),
       });
 
       fetchInterceptor.authorize('refresh_token');
@@ -64,6 +179,23 @@ describe('fetch-intercept', function () {
       fetchInterceptor.authorize('refresh_token', 'token1');
 
       fetch('http://localhost:5000/401/1').then(response => {
+        expect(response.status).to.be.equal(200);
+        return response.json();
+      })
+      .then(data => {
+        expect(data.value).to.be.equal('1');
+        done();
+      })
+      .catch(error => {
+        done(error);
+      });
+    });
+
+    it('should fetch successfully when access token is invalidated from response', function (done) {
+      // set expired access token
+      fetchInterceptor.authorize('refresh_token', 'token2');
+
+      fetch('http://localhost:5000/401/1?invalidate=true').then(response => {
         expect(response.status).to.be.equal(200);
         return response.json();
       })
@@ -125,7 +257,7 @@ describe('fetch-intercept', function () {
       });
     });
 
-    describe('headers are set', () => {
+    describe('request has own headers', () => {
       it('should keep existing headers on request', function (done) {
         fetch('http://localhost:5000/headers', {
           headers: {
@@ -193,7 +325,7 @@ describe('fetch-intercept', function () {
       server.stop(done);
     });
 
-    it('should propagate 401 with invalid refresh token', function (done) {
+    it('should propagate 401 when refresh token is invalid', function (done) {
       fetch('http://localhost:5000/401/1').then(response=> {
         const tokens = fetchInterceptor.getAuthorization();
 
@@ -209,7 +341,7 @@ describe('fetch-intercept', function () {
       });
     });
 
-    it('should fetch multiple requests successfully with access token expired', function (done) {
+    it('should propagate 401 for multiple requests when refresh token is invalid', function (done) {
       Promise.all([
         fetch('http://localhost:5000/401/1?duration=100'),
         fetch('http://localhost:5000/401/2?duration=300'),
