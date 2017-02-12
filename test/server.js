@@ -3,7 +3,10 @@ import express from 'express';
 let app = express();
 let server = null;
 
-let currentToken = 'token1';
+const EXPIRED_TOKEN = 'token1';
+const VALID_TOKEN = 'token2';
+
+let currentToken = EXPIRED_TOKEN;
 let currentRefreshToken = 'refresh_token';
 
 app.get('/200', function(req, res) {
@@ -11,24 +14,48 @@ app.get('/200', function(req, res) {
 });
 
 app.get('/401/:id', function(req, res) {
-  const token = req.header('Authorization') && req.header('Authorization').split(' ')[1];
-  if (token === 'token1') {
-    res.status(401).send();
-  } else if (token === 'token2') {
-    res.json({ "value": req.params.id });
+  const response = () => {
+    const token = req.header('authorization') && req.header('authorization').split(' ')[1];
+
+    if (token === EXPIRED_TOKEN) {
+      res.status(401).send();
+    } else if (token === VALID_TOKEN) {
+      res.json({ 'value': req.params.id });
+    } else {
+      res.status(401).send();
+    }
+  };
+
+  const duration = req.query.duration || 0;
+  if (duration === 0) {
+    response();
   } else {
-    res.status(401).send();
+    setTimeout(response, duration);
   }
 });
 
+app.get('/headers', function(req, res) {
+  res.json(req.headers);
+});
+
 app.get('/token', function(req, res) {
-  if (req.header('Authorization') === `Bearer ${currentRefreshToken}`){
-    currentToken = 'token2';
-    res.json({
-      'accessToken': currentToken
-    })
+  const response = () => {
+    // exchange refresh token for new access token
+    if (req.header('authorization') === `Bearer ${currentRefreshToken}`){
+      currentToken = VALID_TOKEN;
+      res.json({
+        'accessToken': currentToken
+      })
+    } else {
+      res.status(401).send();
+    }
+  };
+
+  const duration = req.query.duration || 0;
+  if (duration === 0) {
+    response();
   } else {
-    res.status(401).send();
+    setTimeout(response, duration);
   }
 });
 
