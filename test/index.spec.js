@@ -23,7 +23,7 @@ describe('fetch-intercept', function () {
       server.stop(done);
     });
 
-    it('getAccessTokenFromResponse is not set throws', () => {
+    it('shouldIntercept is not set throws', () => {
       fetchInterceptor.configure({
         ...emptyConfiguration,
         shouldIntercept: null,
@@ -32,60 +32,45 @@ describe('fetch-intercept', function () {
       expect(() => fetch('http://localhost:5000/200')).to.throw(Error, ERROR_INVALID_CONFIG);
     });
 
-    it('setRequestAuthorization is not set throws', (done) => {
+    it('setRequestAuthorization is not set throws', () => {
       fetchInterceptor.configure({
         ...emptyConfiguration,
-        shouldIntercept: request => true,
         setRequestAuthorization: null,
       });
-      fetchInterceptor.authorize('refresh_token');
 
-      fetch('http://localhost:5000/200').then(() => {
-        done('Should not be called')
-      }).catch(error => {
-        expect(error).to.not.be.null;
-        expect(error).to.be.instanceof(Error);
-        expect(error.message).to.be.equal(ERROR_INVALID_CONFIG);
-
-        done();
-      })
+      expect(() => fetch('http://localhost:5000/200')).to.throw(Error, ERROR_INVALID_CONFIG);
     });
 
-    it('getAccessTokenFromResponse is not set throws', (done) => {
+    it('getAccessTokenFromResponse is not set throws', () => {
       fetchInterceptor.configure({
         ...emptyConfiguration,
-        prepareRefreshTokenRequest: (refreshToken) => new Request('http://localhost:5000/token', {
-          headers: {
-            authorization: `Bearer ${refreshToken}`
-          },
-        }),
-        shouldIntercept: request => request.url !== 'http://localhost:5000/token',
         getAccessTokenFromResponse: null,
       });
-      fetchInterceptor.authorize('refresh_token');
 
-      fetch('http://localhost:5000/401/1').then(() => {
-        done('Should not be called')
-      }).catch(error => {
-        expect(error).to.not.be.null;
-        expect(error).to.be.instanceof(Error);
-        expect(error.message).to.be.equal(ERROR_INVALID_CONFIG);
+      expect(() => fetch('http://localhost:5000/200')).to.throw(Error, ERROR_INVALID_CONFIG);
+    });
 
-        done();
-      })
+    it('prepareRefreshTokenRequest is not set throws', () => {
+      fetchInterceptor.configure({
+        ...emptyConfiguration,
+        prepareRefreshTokenRequest: null,
+      });
+
+      expect(() => fetch('http://localhost:5000/200')).to.throw(Error, ERROR_INVALID_CONFIG);
     });
   });
 
   describe('should not change default fetch behaviour', () => {
-    fetchInterceptor.configure({
-      prepareRefreshTokenRequest: () => {},
-      shouldIntercept: request => false,
-      getAccessTokenFromResponse: response => {},
-      setRequestAuthorization: (request, token) => {}
-    });
 
     describe('server is running', () => {
       beforeEach(done => {
+        fetchInterceptor.configure({
+          prepareRefreshTokenRequest: () => {},
+          shouldIntercept: request => false,
+          getAccessTokenFromResponse: response => {},
+          setRequestAuthorization: (request, token) => {}
+        });
+
         server.start(done);
       });
       afterEach(done => {
@@ -127,7 +112,7 @@ describe('fetch-intercept', function () {
       fetchInterceptor.configure({
         prepareRefreshTokenRequest: refreshToken =>
           new Request('http://localhost:5000/token', {
-            headers: { authorization: `Bearer ${refreshToken}`}
+            headers: { authorization: `Bearer ${refreshToken}` }
           }),
         shouldIntercept: request => request.url.toString() !== 'http://localhost:5000/token',
         getAccessTokenFromResponse: response =>

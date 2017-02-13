@@ -53,20 +53,14 @@ function attach(env) {
 
 function runRefreshTokenPromise() {
   refreshAccessTokenPromise = new Promise((resolve, reject) => {
-    // prepare request
-    const tokenRequest = config.prepareRefreshTokenRequest(tokens.refreshToken);
-
     // fetch new token with refresh token
-    return fetch(tokenRequest)
+    return Promise.resolve(config.prepareRefreshTokenRequest(tokens.refreshToken))
+      .then(tokenRequest => fetch(tokenRequest))
       .then(response => {
         refreshAccessTokenPromise = null;
 
         if (response.status !== STATUS_OK) {
           throw new Error(ERROR_REFRESH_TOKEN_EXPIRED);
-        }
-
-        if (!config.getAccessTokenFromResponse) {
-          throw new Error(ERROR_INVALID_CONFIG);
         }
 
         return config.getAccessTokenFromResponse(response);
@@ -82,6 +76,8 @@ function runRefreshTokenPromise() {
         resolve(token);
       })
       .catch(error => {
+        refreshAccessTokenPromise = null;
+
         tokens.accessToken = null;
         tokens.refreshToken = null;
 
@@ -116,11 +112,14 @@ function isAuthorized() {
 }
 
 function fetchInterceptor(fetch, ...args) {
-  const request = convertToRequest(args);
-
-  if (!config.shouldIntercept) {
+  if (!config.shouldIntercept ||
+    !config.setRequestAuthorization ||
+    !config.prepareRefreshTokenRequest ||
+    !config.getAccessTokenFromResponse) {
     throw new Error(ERROR_INVALID_CONFIG);
   }
+
+  const request = convertToRequest(args);
 
   // check whether we should ignore this request
   if (!isAuthorized() || !config.shouldIntercept(request)) {
@@ -129,23 +128,32 @@ function fetchInterceptor(fetch, ...args) {
 
   // outer fetch promise
   return new Promise((outerResolve, outerReject) => {
-    if (!config.setRequestAuthorization) {
-      throw new Error(ERROR_INVALID_CONFIG);
-    }
-
     // inner promise which includes resolving access token
     const runInnerPromise = () =>
       Promise.resolve(request)
         .then((request) => config.setRequestAuthorization(request, tokens.accessToken))
         // initial fetch
-        .then(() => fetch(request))
+        .then(request => fetch(request))
         .then(response => {
           // check if response invalidates access token
-          if (config.shouldInvalidateAccessToken && config.shouldInvalidateAccessToken(response)) {
+          if (config.shouldInvalidateAccessToken) {
+            return Promise.all([response, config.shouldInvalidateAccessToken(response)]);
+          }
+
+          return response;
+        })
+        .then(results => {
+          const response = results[0];
+          const shouldInvalidateAccessToken = results[1];
+
+          if (shouldInvalidateAccessToken) {
             tokens.accessToken = null;
             runRefreshTokenPromise();
           }
 
+          return response;
+        })
+        .then(response => {
           // if response is not unauthorized we don't care about it
           if (response.status !== STATUS_UNAUTHORIZED) {
             return response;
@@ -167,6 +175,7 @@ function fetchInterceptor(fetch, ...args) {
               // repeat request if tokens don't match
               if (parseBearer(request.headers.get('authorization')) !== tokens.accessToken) {
                 const authorizedRequest = config.setRequestAuthorization(request, tokens.accessToken);
+
                 return fetch(authorizedRequest);
               }
 
@@ -196,9 +205,7 @@ function fetchInterceptor(fetch, ...args) {
 
       // chain to refresh token promise (pending)
       return refreshAccessTokenPromise
-        .then(() => {
-          return runInnerPromise();
-        })
+        .then(() => runInnerPromise())
         .catch(error => {
           if (error.message === ERROR_INVALID_CONFIG) {
             outerReject(error);
@@ -209,7 +216,6 @@ function fetchInterceptor(fetch, ...args) {
               .then(outerResolve)
               .catch(outerReject);
           }
-
         });
     }
 
