@@ -15,7 +15,7 @@ export class FetchInterceptor {
       createAccessTokenRequest: null,
       shouldIntercept: null,
       shouldInvalidateAccessToken: null,
-      getAccessTokenFromResponse: null,
+      parseAccessToken: null,
       authorizeRequest: null,
       onAccessTokenChange: null,
     };
@@ -63,6 +63,10 @@ export class FetchInterceptor {
    */
   getAuthorization() {
     return this.accessTokenProvider.getAuthorization();
+  }
+
+  clear() {
+    this.accessTokenProvider.clear();
   }
 
   intercept(...args) {
@@ -216,6 +220,6 @@ export class FetchInterceptor {
     return this.config.shouldIntercept &&
       this.config.authorizeRequest &&
       this.config.createAccessTokenRequest &&
-      this.config.getAccessTokenFromResponse;
+      this.config.parseAccessToken;
   }
 }

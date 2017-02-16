@@ -49,8 +49,13 @@ function getAuthorization() {
   return interceptors[0].getAuthorization();
 }
 
+function clear() {
+  return interceptors[0].clear();
+}
+
 export {
   init,
+  clear,
   configure,
   authorize,
   getAuthorization,

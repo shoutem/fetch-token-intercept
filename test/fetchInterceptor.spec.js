@@ -13,7 +13,7 @@ const configuration = () => ({
       headers: {authorization: `Bearer ${refreshToken}`}
     }),
   shouldIntercept: request => request.url.toString() !== 'http://localhost:5000/token',
-  getAccessTokenFromResponse: response =>
+  parseAccessToken: response =>
     response.json().then(jsonData => jsonData ? jsonData.accessToken : null),
   authorizeRequest: (request, token) => {
     request.headers.set('authorization', formatBearer(token));
@@ -22,13 +22,10 @@ const configuration = () => ({
 });
 
 const emptyConfiguration = () => ({
-  createAccessTokenRequest: () => {
-  },
+  createAccessTokenRequest: () => {},
   shouldIntercept: request => false,
-  getAccessTokenFromResponse: () => {
-  },
-  authorizeRequest: () => {
-  }
+  parseAccessToken: () => {},
+  authorizeRequest: () => {}
 });
 
 describe('fetch-intercept', function () {
@@ -61,10 +58,10 @@ describe('fetch-intercept', function () {
       expect(() => fetchInterceptor.configure(config)).to.throw(Error, ERROR_INVALID_CONFIG);
     });
 
-    it('throws if getAccessTokenFromResponse is not set', () => {
+    it('throws if parseAccessToken is not set', () => {
       const config = {
         ...emptyConfiguration(),
-        getAccessTokenFromResponse: null,
+        parseAccessToken: null,
       };
 
       expect(() => fetchInterceptor.configure(config)).to.throw(Error, ERROR_INVALID_CONFIG);

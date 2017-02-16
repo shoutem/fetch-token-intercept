@@ -79,7 +79,7 @@ export class AccessTokenProvider {
       return null;
     }
 
-    return this.config.getAccessTokenFromResponse(response);
+    return this.config.parseAccessToken(response);
   }
 
   handleTokenResolved(token, resolve) {
