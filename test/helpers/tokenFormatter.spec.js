@@ -1,13 +1,13 @@
-import 'fetch-everywhere';
 import { expect } from 'chai';
-import { formatBearer, parseBearer } from '../../src/helpers/tokenFormatter';
+import { parseBearer } from '../../src/helpers/tokenFormatter';
+import { formatBearer } from '../helpers/tokenFormatter';
 
 describe('token formatter', () => {
   describe('formatBearer', () => {
     it ('should return null on empty value', () => {
       const result = formatBearer();
       expect(result).to.be.null;
-    })
+    });
 
     it('should return formatted value for header', () => {
       const result = formatBearer('token');
@@ -30,16 +30,8 @@ describe('token formatter', () => {
       expect(result).to.be.null;
     });
 
-
-    it('should return null on invalid header value', () => {
-      const result = parseBearer('bearer undefined');
-
-      expect(result).to.be.null;
-    });
-
-
     it('should return token value', () => {
-      const result = parseBearer('bearer token');
+      const result = parseBearer('Bearer token');
 
       expect(result).to.not.be.null;
       expect(result).to.be.equal('token');
