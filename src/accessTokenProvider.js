@@ -5,6 +5,7 @@ import {
 export class AccessTokenProvider {
   constructor(fetch, config) {
     this.fetch = fetch;
+
     this.config = config;
     this.refreshAccessTokenPromise = null;
     this.tokens = {
@@ -68,7 +69,8 @@ export class AccessTokenProvider {
   }
 
   fetchToken(tokenRequest) {
-    return this.fetch(tokenRequest);
+    const { fetch } = this;
+    return fetch(tokenRequest);
   }
 
   handleFetchResolved(response) {

@@ -11,6 +11,7 @@ export class FetchInterceptor {
   constructor(fetch) {
     // stores reference to vanilla fetch method
     this.fetch = fetch;
+
     this.config = {
       createAccessTokenRequest: null,
       shouldIntercept: null,
@@ -18,6 +19,7 @@ export class FetchInterceptor {
       parseAccessToken: null,
       authorizeRequest: null,
       onAccessTokenChange: null,
+      onResponse: null,
     };
 
     this.isConfigValid = this.isConfigValid.bind(this);
@@ -28,6 +30,7 @@ export class FetchInterceptor {
     this.createRequestUnit = this.createRequestUnit.bind(this);
     this.shouldIntercept = this.shouldIntercept.bind(this);
     this.authorizeRequest = this.authorizeRequest.bind(this);
+    this.shouldFetch = this.shouldFetch.bind(this);
     this.fetchRequest = this.fetchRequest.bind(this);
     this.shouldInvalidateAccessToken = this.shouldInvalidateAccessToken.bind(this);
     this.invalidateAccessToken = this.invalidateAccessToken.bind(this);
@@ -95,6 +98,7 @@ export class FetchInterceptor {
       .then(this.shouldIntercept)
       // authorize request
       .then(this.authorizeRequest)
+      .then(this.shouldFetch)
       // initial fetch
       .then(this.fetchRequest)
       .then(this.shouldInvalidateAccessToken)
@@ -107,6 +111,11 @@ export class FetchInterceptor {
           outerReject();
           return;
         }
+
+        if (this.config.onResponse) {
+          this.config.onResponse(response);
+        }
+
         outerResolve(response);
       })
       .catch(outerReject);
@@ -118,6 +127,7 @@ export class FetchInterceptor {
       response: null,
       shouldIntercept: false,
       shouldInvalidateAccessToken: false,
+      shouldFetch: true,
       accessToken: null,
     }
   }
@@ -129,6 +139,19 @@ export class FetchInterceptor {
       .then(([requestUnit, shouldIntercept]) =>
         ({ ...requestUnit, shouldIntercept })
       );
+  }
+
+  shouldFetch(requestUnit) {
+    const { request } = requestUnit;
+
+    if (this.config.shouldFetch) {
+      return Promise.all([requestUnit, this.config.shouldFetch(request)])
+        .then(([requestUnit, shouldFetch]) =>
+          ({ ...requestUnit, shouldFetch })
+        );
+    }
+
+    return requestUnit;
   }
 
   authorizeRequest(requestUnit) {
@@ -153,11 +176,12 @@ export class FetchInterceptor {
   }
 
   fetchRequest(requestUnit) {
-    const { shouldIntercept } = requestUnit;
+    const { shouldFetch } = requestUnit;
 
-    if (shouldIntercept) {
+    if (shouldFetch) {
       const { request } = requestUnit;
-      return Promise.all([requestUnit, this.fetch(request)])
+      const { fetch } = this;
+      return Promise.all([requestUnit, fetch(request)])
         .then(([requestUnit, response]) =>
           ({...requestUnit, response})
         );
@@ -205,7 +229,7 @@ export class FetchInterceptor {
           .then(([requestUnit, accessToken]) => ({
             ...requestUnit,
             accessToken,
-            shouldIntercept: !!accessToken,
+            shouldFetch: !!accessToken,
           }))
           .then(this.authorizeRequest)
           .then(this.fetchRequest)
