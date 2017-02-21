@@ -1,7 +1,6 @@
 import {
   ERROR_INVALID_CONFIG,
-  ERROR_REFRESH_TOKEN_EXPIRED,
-} from '../lib/const';
+} from './const';
 import {
   isResponseUnauthorized,
 } from './services/http';
