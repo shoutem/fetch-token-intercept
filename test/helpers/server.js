@@ -46,10 +46,10 @@ app.get('/token', function(req, res) {
   const response = () => {
     // exchange refresh token for new access token
     if (req.header('authorization') === `Bearer ${currentRefreshToken}`){
-      currentToken = VALID_TOKEN;
+      currentToken = req.query.invalid ? 'invalid_token' : VALID_TOKEN;
 
       res.json({
-        'accessToken': currentToken
+        'accessToken': currentToken,
       });
     } else {
       res.status(401).send();

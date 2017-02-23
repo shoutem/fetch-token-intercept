@@ -4,7 +4,7 @@ import { formatBearer } from '../helpers/tokenFormatter';
 
 describe('token formatter', () => {
   describe('formatBearer', () => {
-    it ('should return null on empty value', () => {
+    it('should return null on empty value', () => {
       const result = formatBearer();
       expect(result).to.be.null;
     });
