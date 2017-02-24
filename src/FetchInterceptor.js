@@ -47,7 +47,7 @@ export default class FetchInterceptor {
   /**
    * Configures fetch interceptor with given config object. All required properties can optionally
    * return a promise which will be resolved by fetch interceptor automatically.
-   * 
+   *
    * @param config
    *
    * (Required) Prepare fetch request for renewing new access token
