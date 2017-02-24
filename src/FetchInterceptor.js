@@ -314,7 +314,8 @@ export default class FetchInterceptor {
       return fetchResolve(response);
     }
 
-    return fetchReject(error);
+    // cannot be handled here
+    throw new Error(error);
   }
 
   isConfigValid() {
