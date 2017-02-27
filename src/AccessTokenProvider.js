@@ -3,9 +3,9 @@ import {
 } from './services/http';
 
 /**
- * Provides a way for renewing access token with correct renew token. It will automatically
+ * Provides a way for renewing access token with correct refresh token. It will automatically
  * dispatch a call to server with request provided via config. It also ensures that
- * renew token is fetched only once no matter how many requests are trying to get
+ * access token is fetched only once no matter how many requests are trying to get
  * a renewed version of access token at the moment. All subsequent requests will be chained
  * to renewing fetch promise and resolved once the response is received.
  */
@@ -39,7 +39,7 @@ export default class AccessTokenProvider {
   renew() {
     // if token resolver is not authorized it should just resolve
     if (!this.isAuthorized()) {
-      console.log('Please authorize provider before renewing or check shouldIntercept config.');
+      console.warn('Please authorize provider before renewing or check shouldIntercept config.');
       return Promise.resolve();
     }
 
@@ -53,7 +53,7 @@ export default class AccessTokenProvider {
   }
 
   /**
-   * Authorizes intercept library with given renew token
+   * Authorizes intercept library with given refresh token
    * @param refreshToken
    * @param accessToken
    */
@@ -97,14 +97,14 @@ export default class AccessTokenProvider {
     return this.config.parseAccessToken(response);
   }
 
-  handleAccessToken(token, resolve) {
-    this.tokens.accessToken = token;
+  handleAccessToken(accessToken, resolve) {
+    this.tokens = { ...this.tokens, accessToken };
 
     if (this.config.onAccessTokenChange) {
-      this.config.onAccessTokenChange(token);
+      this.config.onAccessTokenChange(accessToken);
     }
 
-    resolve(token);
+    resolve(accessToken);
   }
 
   handleError(error, reject) {

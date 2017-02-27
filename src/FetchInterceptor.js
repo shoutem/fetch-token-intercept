@@ -118,6 +118,13 @@ export default class FetchInterceptor {
     return new Promise((resolve, reject) => this.resolveIntercept(resolve, reject, ...args));
   }
 
+  isConfigValid() {
+    return this.config.shouldIntercept &&
+      this.config.authorizeRequest &&
+      this.config.createAccessTokenRequest &&
+      this.config.parseAccessToken;
+  }
+
   resolveIntercept(resolve, reject, ...args) {
     const request = new Request(...args);
     const { accessToken } = this.accessTokenProvider.getAuthorization();
@@ -222,51 +229,53 @@ export default class FetchInterceptor {
   fetchRequest(requestUnit) {
     const { shouldFetch } = requestUnit;
 
-    if (shouldFetch) {
-      const { request, fetchCount } = requestUnit;
-      const { fetchRetryCount } = this.config;
-
-      // verifies that retry count has not been exceeded
-      if (fetchCount > fetchRetryCount) {
-        throw new RetryCountExceededException(requestUnit);
-      }
-
-      const { fetch } = this;
-      return Promise.resolve(fetch(request))
-        .then(response =>
-          ({
-            ...requestUnit,
-            response,
-            fetchCount: fetchCount + 1,
-          })
-        );
+    if (!shouldFetch) {
+      return requestUnit;
     }
 
-    return requestUnit;
+    const { request, fetchCount } = requestUnit;
+    const { fetchRetryCount } = this.config;
+
+    // verifies that retry count has not been exceeded
+    if (fetchCount > fetchRetryCount) {
+      throw new RetryCountExceededException(requestUnit);
+    }
+
+    const { fetch } = this;
+    return Promise.resolve(fetch(request))
+      .then(response =>
+        ({
+          ...requestUnit,
+          response,
+          fetchCount: fetchCount + 1,
+        })
+      );
   }
 
   shouldInvalidateAccessToken(requestUnit) {
     const { shouldIntercept } = requestUnit;
     const { shouldInvalidateAccessToken } = this.config;
 
-    if (shouldIntercept && shouldInvalidateAccessToken) {
-      const { response } = requestUnit;
-      // check if response invalidates access token
-      return Promise.resolve(shouldInvalidateAccessToken(response))
-        .then(shouldInvalidateAccessToken =>
-          ({ ...requestUnit, shouldInvalidateAccessToken })
-        );
+    if (!shouldIntercept || !shouldInvalidateAccessToken) {
+      return requestUnit;
     }
 
-    return requestUnit;
+    const { response } = requestUnit;
+    // check if response invalidates access token
+    return Promise.resolve(shouldInvalidateAccessToken(response))
+      .then(shouldInvalidateAccessToken =>
+        ({ ...requestUnit, shouldInvalidateAccessToken })
+      );
   }
 
   invalidateAccessToken(requestUnit) {
     const { shouldIntercept, shouldInvalidateAccessToken } = requestUnit;
 
-    if (shouldIntercept && shouldInvalidateAccessToken) {
-      this.accessTokenProvider.renew();
+    if (!shouldIntercept || !shouldInvalidateAccessToken) {
+      return requestUnit;
     }
+
+    this.accessTokenProvider.renew();
 
     return requestUnit;
   }
@@ -316,12 +325,5 @@ export default class FetchInterceptor {
 
     // cannot be handled here
     throw new Error(error);
-  }
-
-  isConfigValid() {
-    return this.config.shouldIntercept &&
-      this.config.authorizeRequest &&
-      this.config.createAccessTokenRequest &&
-      this.config.parseAccessToken;
   }
 }
