@@ -91,15 +91,15 @@ to stop fetch interception.
 ## API reference
 
 ### Exports
- `configure`
+ `configure(configuration)`
  
  Configures fetch token interceptor with provided configuration object.
  
- `authorize` 
+ `authorize(refreshToken, accessToken)` 
   
   Authorizes fetch token interceptor with provided tokens.
   
- `clear`
+ `clear()`
  
  Clears all tokens from interceptor.
  
