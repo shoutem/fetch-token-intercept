@@ -105,9 +105,12 @@ to stop fetch interception.
  
  ## Tests
  
+ 
  ```
  $ npm install && npm run test
  ```
  
+ 
  ## License
+ 
  BSD
