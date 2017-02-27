@@ -103,14 +103,12 @@ to stop fetch interception.
  
  Clears all tokens from interceptor.
  
- ## Tests
- 
- 
- ```
- $ npm install && npm run test
- ```
- 
- 
- ## License
+## Tests
+
+```
+$ npm install && npm run test
+``` 
+
+## License
  
  BSD
