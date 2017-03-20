@@ -20,7 +20,7 @@ export default class FetchInterceptor {
     this.config = {
       fetchRetryCount: 1,
       createAccessTokenRequest: null,
-      shouldIntercept: null,
+      shouldIntercept: () => true,
       shouldInvalidateAccessToken: null,
       parseAccessToken: null,
       authorizeRequest: null,

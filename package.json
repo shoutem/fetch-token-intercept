@@ -1,6 +1,6 @@
 {
   "name": "@shoutem/fetch-token-intercept",
-  "version": "0.0.1-alpha.5",
+  "version": "0.0.1-alpha.6",
   "description": "Fetch interceptor for managing refresh token flow.",
   "main": "lib/index.js",
   "files": [
