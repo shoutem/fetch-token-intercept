@@ -21,7 +21,7 @@ export default class FetchInterceptor {
       fetchRetryCount: 1,
       createAccessTokenRequest: null,
       shouldIntercept: () => true,
-      shouldInvalidateAccessToken: null,
+      shouldInvalidateAccessToken: () => false,
       parseAccessToken: null,
       authorizeRequest: null,
       onAccessTokenChange: null,
@@ -256,7 +256,7 @@ export default class FetchInterceptor {
     const { shouldIntercept } = requestUnit;
     const { shouldInvalidateAccessToken } = this.config;
 
-    if (!shouldIntercept || !shouldInvalidateAccessToken) {
+    if (!shouldIntercept) {
       return requestUnit;
     }
 

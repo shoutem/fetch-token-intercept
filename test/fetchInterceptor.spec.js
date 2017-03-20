@@ -22,7 +22,6 @@ const configuration = config => ({
     request.headers.set('authorization', formatBearer(token));
     return request;
   },
-  shouldInvalidateAccessToken: null,
   onAccessTokenChange: null,
   onResponse: null,
   ...config,
