@@ -62,7 +62,7 @@ export default class AccessTokenProvider {
   }
 
   /**
-   * Returns current authorization for fetch fetchInterceptor
+   * Returns current authorization for fetch interceptor
    * @returns {{accessToken: string, refreshToken: string}}
    */
   getAuthorization() {

@@ -33,7 +33,7 @@ export default class FetchInterceptor {
     this.resolveIntercept = this.resolveIntercept.bind(this);
     this.fetchWithRetry = this.fetchWithRetry.bind(this);
     this.isConfigValid = this.isConfigValid.bind(this);
-    this.createRequestUnit = this.createRequestUnit.bind(this);
+    this.createRequestContext = this.createRequestContext.bind(this);
     this.shouldIntercept = this.shouldIntercept.bind(this);
     this.authorizeRequest = this.authorizeRequest.bind(this);
     this.shouldFetch = this.shouldFetch.bind(this);
@@ -86,7 +86,7 @@ export default class FetchInterceptor {
   }
 
   /**
-   * Authorizes fetch interceptor with given renew token
+   * Authorizes fetch interceptor with given refresh token
    * @param refreshToken
    * @param accessToken
    */
@@ -128,24 +128,24 @@ export default class FetchInterceptor {
   resolveIntercept(resolve, reject, ...args) {
     const request = new Request(...args);
     const { accessToken } = this.accessTokenProvider.getAuthorization();
-    const requestUnit = this.createRequestUnit(request, resolve, reject);
+    const requestContext = this.createRequestContext(request, resolve, reject);
 
     // if access token is not resolved yet
     if (!accessToken) {
       return this.accessTokenProvider
         .renew()
-        .then(() => this.fetchWithRetry(requestUnit))
+        .then(() => this.fetchWithRetry(requestContext))
         .catch(reject);
     }
 
     // attempt normal fetch operation
-    return this.fetchWithRetry(requestUnit)
+    return this.fetchWithRetry(requestContext)
       .catch(reject);
   }
 
-  fetchWithRetry(requestUnit) {
-    // prepare initial request unit
-    return Promise.resolve(requestUnit)
+  fetchWithRetry(requestContext) {
+    // prepare initial request context
+    return Promise.resolve(requestContext)
       // resolve should intercept flag, when false, step is skipped
       .then(this.shouldIntercept)
       // authorize request
@@ -166,7 +166,17 @@ export default class FetchInterceptor {
       .catch(this.handleUnauthorizedRequest);
   }
 
-  createRequestUnit(request, fetchResolve, fetchReject) {
+  /**
+   * Request context provides a common object for storing information about request's and response's
+   * results while it passes through a token interception pipeline. It's provided as input for each
+   * stage method in the pipeline and can be used to store results of that stage or read results of
+   * previous stages. Each stage should modify the context accordingly and simple return context
+   * when it's finished.
+   * @param request
+   * @param fetchResolve
+   * @param fetchReject
+   */
+  createRequestContext(request, fetchResolve, fetchReject) {
     return {
       request,
       response: null,
@@ -180,108 +190,108 @@ export default class FetchInterceptor {
     }
   }
 
-  shouldIntercept(requestUnit) {
-    const { request } = requestUnit;
+  shouldIntercept(requestContext) {
+    const { request } = requestContext;
     const { shouldIntercept } = this.config;
 
     return Promise.resolve(shouldIntercept(request))
       .then(shouldIntercept =>
-        ({ ...requestUnit, shouldIntercept })
+        ({ ...requestContext, shouldIntercept })
       );
   }
 
-  authorizeRequest(requestUnit) {
-    const { shouldIntercept } = requestUnit;
+  authorizeRequest(requestContext) {
+    const { shouldIntercept } = requestContext;
 
     if (!shouldIntercept) {
-      return requestUnit;
+      return requestContext;
     }
 
-    const { request } = requestUnit;
+    const { request } = requestContext;
     const { accessToken } = this.accessTokenProvider.getAuthorization();
     const { authorizeRequest } = this.config;
 
     if (request && accessToken){
       return Promise.resolve(authorizeRequest(request, accessToken))
         .then(request =>
-          ({ ...requestUnit, accessToken, request })
+          ({ ...requestContext, accessToken, request })
         );
     }
 
-    return requestUnit;
+    return requestContext;
   }
 
-  shouldFetch(requestUnit) {
-    const { request } = requestUnit;
+  shouldFetch(requestContext) {
+    const { request } = requestContext;
     const { shouldFetch } = this.config;
 
     // verifies all outside conditions from config are met
     if (!shouldFetch) {
-      return requestUnit;
+      return requestContext;
     }
 
     return Promise.resolve(shouldFetch(request))
       .then(shouldFetch =>
-        ({ ...requestUnit, shouldFetch })
+        ({ ...requestContext, shouldFetch })
       );
   }
 
-  fetchRequest(requestUnit) {
-    const { shouldFetch } = requestUnit;
+  fetchRequest(requestContext) {
+    const { shouldFetch } = requestContext;
 
     if (!shouldFetch) {
-      return requestUnit;
+      return requestContext;
     }
 
-    const { request, fetchCount } = requestUnit;
+    const { request, fetchCount } = requestContext;
     const { fetchRetryCount } = this.config;
 
     // verifies that retry count has not been exceeded
     if (fetchCount > fetchRetryCount) {
-      throw new RetryCountExceededException(requestUnit);
+      throw new RetryCountExceededException(requestContext);
     }
 
     const { fetch } = this;
     return Promise.resolve(fetch(request))
       .then(response =>
         ({
-          ...requestUnit,
+          ...requestContext,
           response,
           fetchCount: fetchCount + 1,
         })
       );
   }
 
-  shouldInvalidateAccessToken(requestUnit) {
-    const { shouldIntercept } = requestUnit;
+  shouldInvalidateAccessToken(requestContext) {
+    const { shouldIntercept } = requestContext;
     const { shouldInvalidateAccessToken } = this.config;
 
     if (!shouldIntercept) {
-      return requestUnit;
+      return requestContext;
     }
 
-    const { response } = requestUnit;
+    const { response } = requestContext;
     // check if response invalidates access token
     return Promise.resolve(shouldInvalidateAccessToken(response))
       .then(shouldInvalidateAccessToken =>
-        ({ ...requestUnit, shouldInvalidateAccessToken })
+        ({ ...requestContext, shouldInvalidateAccessToken })
       );
   }
 
-  invalidateAccessToken(requestUnit) {
-    const { shouldIntercept, shouldInvalidateAccessToken } = requestUnit;
+  invalidateAccessToken(requestContext) {
+    const { shouldIntercept, shouldInvalidateAccessToken } = requestContext;
 
     if (!shouldIntercept || !shouldInvalidateAccessToken) {
-      return requestUnit;
+      return requestContext;
     }
 
     this.accessTokenProvider.renew();
 
-    return requestUnit;
+    return requestContext;
   }
 
-  handleResponse(requestUnit) {
-    const { shouldIntercept, response, fetchResolve, fetchReject } = requestUnit;
+  handleResponse(requestContext) {
+    const { shouldIntercept, response, fetchResolve, fetchReject } = requestContext;
 
     // can only be empty on network errors
     if (!response) {
@@ -290,7 +300,7 @@ export default class FetchInterceptor {
     }
 
     if (shouldIntercept && isResponseUnauthorized(response)) {
-      throw new TokenExpiredException({ ...requestUnit })
+      throw new TokenExpiredException({ ...requestContext })
     }
 
     if (this.config.onResponse) {
@@ -303,18 +313,18 @@ export default class FetchInterceptor {
   handleUnauthorizedRequest(error) {
     // if expired token, we try to resolve it and retry operation
     if (error instanceof TokenExpiredException) {
-      const { requestUnit } = error;
-      const { fetchReject } = requestUnit;
+      const { requestContext } = error;
+      const { fetchReject } = requestContext;
 
       return Promise.resolve(this.accessTokenProvider.renew())
-        .then(() => this.fetchWithRetry(requestUnit))
+        .then(() => this.fetchWithRetry(requestContext))
         .catch(fetchReject);
     }
 
     // if we failed to resolve token we just pass the last response
     if (error instanceof RetryCountExceededException) {
-      const { requestUnit } = error;
-      const { response, fetchResolve } = requestUnit;
+      const { requestContext } = error;
+      const { response, fetchResolve } = requestContext;
 
       if (this.config.onResponse) {
         this.config.onResponse(response);
