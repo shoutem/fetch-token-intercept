@@ -34,6 +34,7 @@ export default class FetchInterceptor {
     this.fetchWithRetry = this.fetchWithRetry.bind(this);
     this.isConfigValid = this.isConfigValid.bind(this);
     this.createRequestContext = this.createRequestContext.bind(this);
+    this.createRequest = this.createRequest.bind(this);
     this.shouldIntercept = this.shouldIntercept.bind(this);
     this.authorizeRequest = this.authorizeRequest.bind(this);
     this.shouldFetch = this.shouldFetch.bind(this);
@@ -126,9 +127,8 @@ export default class FetchInterceptor {
   }
 
   resolveIntercept(resolve, reject, ...args) {
-    const request = new Request(...args);
     const { accessToken } = this.accessTokenProvider.getAuthorization();
-    const requestContext = this.createRequestContext(request, resolve, reject);
+    const requestContext = this.createRequestContext([...args], resolve, reject);
 
     // if access token is not resolved yet
     if (!accessToken) {
@@ -146,6 +146,8 @@ export default class FetchInterceptor {
   fetchWithRetry(requestContext) {
     // prepare initial request context
     return Promise.resolve(requestContext)
+      // create request
+      .then(this.createRequest)
       // resolve should intercept flag, when false, step is skipped
       .then(this.shouldIntercept)
       // authorize request
@@ -172,21 +174,32 @@ export default class FetchInterceptor {
    * stage method in the pipeline and can be used to store results of that stage or read results of
    * previous stages. Each stage should modify the context accordingly and simple return context
    * when it's finished.
-   * @param request
+   * @param fetchArgs
    * @param fetchResolve
    * @param fetchReject
    */
-  createRequestContext(request, fetchResolve, fetchReject) {
+  createRequestContext(fetchArgs, fetchResolve, fetchReject) {
     return {
-      request,
+      request: null,
       response: null,
       shouldIntercept: false,
       shouldInvalidateAccessToken: false,
       shouldFetch: true,
       accessToken: null,
       fetchCount: 0,
+      fetchArgs,
       fetchResolve,
       fetchReject,
+    }
+  }
+
+  createRequest(requestContext) {
+    const { fetchArgs } = requestContext;
+    const request = new Request(...fetchArgs);
+
+    return {
+      ...requestContext,
+      request,
     }
   }
 
