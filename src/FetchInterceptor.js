@@ -184,6 +184,7 @@ export default class FetchInterceptor {
       response: null,
       shouldIntercept: false,
       shouldInvalidateAccessToken: false,
+      shouldWaitForTokenRenewal: false,
       shouldFetch: true,
       accessToken: null,
       fetchCount: 0,
@@ -293,14 +294,19 @@ export default class FetchInterceptor {
 
   invalidateAccessToken(requestContext) {
     const { shouldIntercept, shouldInvalidateAccessToken } = requestContext;
+    const { shouldWaitForTokenRenewal } = this.config;
 
     if (!shouldIntercept || !shouldInvalidateAccessToken) {
       return requestContext;
     }
 
-    this.accessTokenProvider.renew();
+    if (!shouldWaitForTokenRenewal) {
+      this.accessTokenProvider.renew();
+      return requestContext;
+    }
 
-    return requestContext;
+    return Promise.resolve(this.accessTokenProvider.renew())
+      .then(() => requestContext);
   }
 
   handleResponse(requestContext) {
