@@ -285,6 +285,36 @@ describe('fetch-intercept', function () {
       });
     });
 
+    it('should fetch successfully when access token is invalidated from response and waits for token renewal', function (done) {
+      fetchInterceptor.configure(configuration({
+        shouldWaitForTokenRenewal: true,
+        shouldInvalidateAccessToken: response => {
+          return response.headers.get('invalidates-token') === 'true';
+        },
+      }));
+      fetchInterceptor.authorize('refresh_token', 'token2');
+
+      Promise.resolve(
+        fetch('http://localhost:5000/401/1?duration=100&invalidate=true'),
+      ).then(result => {
+        expect(result.status).to.be.equal(200);
+
+        return Promise.all([
+          fetch('http://localhost:5000/401/2?duration=50'),
+          fetch('http://localhost:5000/401/3?duration=50'),
+        ]);
+      }).then(results => {
+        return {first: results[0], second: results[1]}
+      }).then(responses => {
+        expect(responses.first.status).to.be.equal(200);
+        expect(responses.second.status).to.be.equal(200);
+
+        done();
+      }).catch(error => {
+        done(error);
+      });
+    });
+
     it('should fetch multiple simultaneous requests successfully with access token expired', function (done) {
       // set expired access token
       fetchInterceptor.authorize('refresh_token', 'token1');

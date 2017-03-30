@@ -39,6 +39,10 @@ config: {
    
   // (Required) Defines whether access token will be invalidated after this response
   shouldInvalidateAccessToken: (response) => boolean,
+  
+  // When set, response which invalidates token will be resolved after the token has been renewed
+  // in effect, token will be loaded in sync with response, otherwise renew will run async to response
+  shouldWaitForTokenRenewal: boolean,
    
   // (Required) Adds authorization for intercepted requests
   authorizeRequest: (request) => authorizedRequest,
