@@ -28,33 +28,33 @@ Configuration is provided via `config` object:
 
 ```
 config: {
-  //(Required) Prepare fetch request for renewing new access token
+  // (Required) Prepare fetch request for renewing new access token
   createAccessTokenRequest: (refreshToken) => request,
    
-  //(Required) Parses access token from access token response
+  // (Required) Parses access token from access token response
   parseAccessToken: (response) => accessToken,
    
-  //(Required) Defines whether interceptor will intercept this request or just let it pass through
+  // (Required) Defines whether interceptor will intercept this request or just let it pass through
   shouldIntercept: (request) => boolean,
    
-  //(Required) Defines whether access token will be invalidated after this response
+  // (Required) Defines whether access token will be invalidated after this response
   shouldInvalidateAccessToken: (response) => boolean,
    
-  //(Required) Adds authorization for intercepted requests
+  // (Required) Adds authorization for intercepted requests
   authorizeRequest: (request) => authorizedRequest,
    
-  //Number of retries after initial request was unauthorized
+  // Number of retries after initial request was unauthorized
   fetchRetryCount: 1,
   
-  //Event invoked when access token has changed
+  // Event invoked when access token has changed
   onAccessTokenChange: null,
    
-  //Event invoked when response is resolved
+  // Event invoked when response is resolved
   onResponse: null,
 }
 ```
 
-All required methods support returning a promise to enable reading of body.
+All required methods return a promise to enable reading of request or response body.
 You should avoid reading the body directly on provided requests and responses and instead clone 
 them first. The library does not clone objects to avoid unnecessary overhead in cases where 
 reading a body is not required to provide data.

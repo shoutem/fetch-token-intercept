@@ -234,6 +234,26 @@ describe('fetch-intercept', function () {
         });
     });
 
+    it('should fetch POST request with body and access token expired', function (done) {
+      // set expired access token
+      fetchInterceptor.authorize('refresh_token', 'token1');
+
+      fetch('http://localhost:5000/401/1', {
+        method: 'POST',
+        body: JSON.stringify({
+          test: 'data',
+        })
+      }).then(response => {
+        expect(response.status).to.be.equal(200);
+        return response.json();
+      }).then(data => {
+        expect(data.value).to.be.equal('1');
+        done();
+      }).catch(error => {
+        done(error);
+      });
+    });
+
     it('should fetch successfully with access token valid', function (done) {
       fetchInterceptor.authorize('refresh_token', 'token2');
 

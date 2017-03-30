@@ -13,7 +13,7 @@ app.get('/200', function(req, res) {
   res.send();
 });
 
-app.get('/401/:id', function(req, res) {
+function handleUnauthorizedRequest(req, res ){
   const response = () => {
     const token = req.header('authorization') && req.header('authorization').split(' ')[1];
 
@@ -36,7 +36,10 @@ app.get('/401/:id', function(req, res) {
   } else {
     setTimeout(response, duration);
   }
-});
+}
+
+app.get('/401/:id', handleUnauthorizedRequest);
+app.post('/401/:id', handleUnauthorizedRequest);
 
 app.get('/headers', function(req, res) {
   res.json(req.headers);
