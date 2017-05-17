@@ -64,7 +64,7 @@ export default class FetchInterceptor {
    *   shouldInvalidateAccessToken: (response) => boolean,
    *
    * (Required) Adds authorization for intercepted requests
-   *   authorizeRequest: (request) => authorizedRequest,
+   *   authorizeRequest: (request, accessToken) => authorizedRequest,
    *
    * Number of retries after initial request was unauthorized
    *   fetchRetryCount: 1,
