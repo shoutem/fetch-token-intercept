@@ -16,9 +16,10 @@ app.get('/200', function(req, res) {
 function handleUnauthorizedRequest(req, res ){
   const response = () => {
     const token = req.header('authorization') && req.header('authorization').split(' ')[1];
+    const responseStatus = req.query.respondStatus || 401;
 
     if (token === EXPIRED_TOKEN) {
-      res.status(401).send();
+      res.status(responseStatus).send();
     } else if (token === VALID_TOKEN) {
       if (req.query.invalidate){
         res.set('invalidates-token', true);
@@ -26,7 +27,7 @@ function handleUnauthorizedRequest(req, res ){
 
       res.json({ 'value': req.params.id });
     } else {
-      res.status(401).send();
+      res.status(responseStatus).send();
     }
   };
 

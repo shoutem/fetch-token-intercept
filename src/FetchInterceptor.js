@@ -1,9 +1,7 @@
 import {
   ERROR_INVALID_CONFIG,
 } from './const';
-import {
-  isResponseUnauthorized,
-} from './services/http';
+import * as http from './services/http';
 import TokenExpiredException from './services/TokenExpiredException';
 import RetryCountExceededException from './services/RetryCountExceededException';
 import AccessTokenProvider from './AccessTokenProvider';
@@ -22,6 +20,7 @@ export default class FetchInterceptor {
       createAccessTokenRequest: null,
       shouldIntercept: () => true,
       shouldInvalidateAccessToken: () => false,
+      isResponseUnauthorized: http.isResponseUnauthorized,
       parseAccessToken: null,
       authorizeRequest: null,
       onAccessTokenChange: null,
@@ -65,6 +64,11 @@ export default class FetchInterceptor {
    *
    * (Required) Adds authorization for intercepted requests
    *   authorizeRequest: (request, accessToken) => authorizedRequest,
+   *
+   * Checks if response should be considered unauthorized (by default only 401 responses are
+   * considered unauthorized. Override this method if you need to trigger token renewal for
+   * other response statuses.
+   *   isResponseUnauthorized: (response) => boolean,
    *
    * Number of retries after initial request was unauthorized
    *   fetchRetryCount: 1,
@@ -311,6 +315,7 @@ export default class FetchInterceptor {
 
   handleResponse(requestContext) {
     const { shouldIntercept, response, fetchResolve, fetchReject } = requestContext;
+    const { isResponseUnauthorized } = this.config;
 
     // can only be empty on network errors
     if (!response) {

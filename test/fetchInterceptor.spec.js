@@ -24,6 +24,7 @@ const configuration = config => ({
   },
   onAccessTokenChange: null,
   onResponse: null,
+  isResponseUnauthorized: response => response.status === 401,
   ...config,
 });
 
@@ -409,6 +410,26 @@ describe('fetch-intercept', function () {
       .catch(error => {
         done(error);
       });
+    });
+
+    it('should fetch successfully with access token expired and status 403', function (done) {
+      fetchInterceptor.configure(configuration({
+        isResponseUnauthorized: (response) => response.status === 403
+      }));
+      // set expired access token
+      fetchInterceptor.authorize('refresh_token', 'token1');
+
+      fetch('http://localhost:5000/401/1?respondStatus=403').then(response => {
+        expect(response.status).to.be.equal(200);
+        return response.json();
+      })
+        .then(data => {
+          expect(data.value).to.be.equal('1');
+          done();
+        })
+        .catch(error => {
+          done(error);
+        });
     });
   });
 

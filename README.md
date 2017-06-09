@@ -43,6 +43,11 @@ config: {
   // When set, response which invalidates token will be resolved after the token has been renewed
   // in effect, token will be loaded in sync with response, otherwise renew will run async to response
   shouldWaitForTokenRenewal: boolean,
+  
+  // Checks if response should be considered unauthorized (by default only 401 responses are 
+  // considered unauthorized). Override this method if you need to trigger token renewal for 
+  // other response statuses.
+  isResponseUnauthorized: (response) => boolean,
    
   // (Required) Adds authorization for intercepted requests
   authorizeRequest: (request, accessToken) => authorizedRequest,

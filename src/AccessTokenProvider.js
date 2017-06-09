@@ -1,7 +1,3 @@
-import {
-  isResponseUnauthorized,
-} from './services/http';
-
 /**
  * Provides a way for renewing access token with correct refresh token. It will automatically
  * dispatch a call to server with request provided via config. It also ensures that
@@ -39,7 +35,6 @@ export default class AccessTokenProvider {
   renew() {
     // if token resolver is not authorized it should just resolve
     if (!this.isAuthorized()) {
-      console.warn('Please authorize provider before renewing or check shouldIntercept config.');
       return Promise.resolve();
     }
 
@@ -89,7 +84,7 @@ export default class AccessTokenProvider {
   handleFetchAccessTokenResponse(response) {
     this.renewAccessTokenPromise = null;
 
-    if (isResponseUnauthorized(response)) {
+    if (this.config.isResponseUnauthorized(response)) {
       this.clear();
       return null;
     }
