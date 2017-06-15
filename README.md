@@ -1,3 +1,6 @@
+[![CircleCI](https://circleci.com/gh/shoutem/fetch-token-intercept/tree/master.svg?style=svg)](https://circleci.com/gh/shoutem/fetch-token-intercept/tree/master)
+[![Code Climate](https://codeclimate.com/github/shoutem/fetch-token-intercept/badges/gpa.svg)](https://codeclimate.com/github/shoutem/fetch-token-intercept)
+
 # fetch-token-intercept
 Library for easy renewing of access tokens in OAuth's refresh token flow. This library will monkey
 patch fetch on your target environment and will try to resolve unauthorized requests automatically
