@@ -6,6 +6,7 @@ by renewing the current access token and then retrying an initial fetch operatio
 If you are not familiar with refresh token flow you should check some of the following resources:
 - [RFC standards track regarding refresh token flow](https://tools.ietf.org/html/rfc6749#page-10)
 - [Auth0 blog - Refresh Tokens: When to Use Them and How They Interact with JWTs](https://auth0.com/blog/refresh-tokens-what-are-they-and-when-to-use-them/)
+- [Shoutem blog - Keeping your tokens fresh](https://medium.com/shoutem/keeping-your-api-tokens-fresh-72059a7b0586)
 
 >Note:
 This library expects that fetch and promise api's are available at target environment. You should
@@ -43,6 +44,11 @@ config: {
   // When set, response which invalidates token will be resolved after the token has been renewed
   // in effect, token will be loaded in sync with response, otherwise renew will run async to response
   shouldWaitForTokenRenewal: boolean,
+  
+  // Checks if response should be considered unauthorized (by default only 401 responses are 
+  // considered unauthorized). Override this method if you need to trigger token renewal for 
+  // other response statuses. Check API reference for helper method which defines default behaviour
+  isResponseUnauthorized: (response) => boolean,
    
   // (Required) Adds authorization for intercepted requests
   authorizeRequest: (request, accessToken) => authorizedRequest,
@@ -92,7 +98,7 @@ to stop fetch interception.
    ...
 ```
 
-## API reference
+## API reference <a name="api-reference"></a>
 
 ### Exports
  `configure(configuration)`
@@ -106,6 +112,14 @@ to stop fetch interception.
  `clear()`
  
  Clears all tokens from interceptor.
+ 
+ `isResponseUnauthorized(response)`
+ 
+ Utility method which determines if given response should be considered unauthorized. 
+ By default, responses with status code `401` are considered unauthorized.
+ You can use this method in `isResponseUnauthorized` of `config` object 
+ when you want to extend default behaviour.
+ 
  
 ## Tests
 

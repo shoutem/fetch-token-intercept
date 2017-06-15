@@ -6,7 +6,7 @@ function isResponseStatus(response, status) {
     return false;
   }
 
-  return response['status'] === status;
+  return response.status === status;
 }
 
 export function isResponseOk(response) {

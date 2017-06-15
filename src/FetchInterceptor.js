@@ -1,9 +1,7 @@
 import {
   ERROR_INVALID_CONFIG,
 } from './const';
-import {
-  isResponseUnauthorized,
-} from './services/http';
+import * as http from './services/http';
 import TokenExpiredException from './services/TokenExpiredException';
 import RetryCountExceededException from './services/RetryCountExceededException';
 import AccessTokenProvider from './AccessTokenProvider';
@@ -22,6 +20,7 @@ export default class FetchInterceptor {
       createAccessTokenRequest: null,
       shouldIntercept: () => true,
       shouldInvalidateAccessToken: () => false,
+      isResponseUnauthorized: http.isResponseUnauthorized,
       parseAccessToken: null,
       authorizeRequest: null,
       onAccessTokenChange: null,
@@ -65,6 +64,11 @@ export default class FetchInterceptor {
    *
    * (Required) Adds authorization for intercepted requests
    *   authorizeRequest: (request, accessToken) => authorizedRequest,
+   *
+   * Checks if response should be considered unauthorized (by default only 401 responses are
+   * considered unauthorized. Override this method if you need to trigger token renewal for
+   * other response statuses.
+   *   isResponseUnauthorized: (response) => boolean,
    *
    * Number of retries after initial request was unauthorized
    *   fetchRetryCount: 1,
@@ -191,7 +195,7 @@ export default class FetchInterceptor {
       fetchArgs,
       fetchResolve,
       fetchReject,
-    }
+    };
   }
 
   createRequest(requestContext) {
@@ -201,14 +205,13 @@ export default class FetchInterceptor {
     return {
       ...requestContext,
       request,
-    }
+    };
   }
 
   shouldIntercept(requestContext) {
     const { request } = requestContext;
-    const { shouldIntercept } = this.config;
 
-    return Promise.resolve(shouldIntercept(request))
+    return Promise.resolve(this.config.shouldIntercept(request))
       .then(shouldIntercept =>
         ({ ...requestContext, shouldIntercept })
       );
@@ -225,10 +228,10 @@ export default class FetchInterceptor {
     const { accessToken } = this.accessTokenProvider.getAuthorization();
     const { authorizeRequest } = this.config;
 
-    if (request && accessToken){
+    if (request && accessToken) {
       return Promise.resolve(authorizeRequest(request, accessToken))
-        .then(request =>
-          ({ ...requestContext, accessToken, request })
+        .then(authorizedRequest =>
+          ({ ...requestContext, accessToken, request: authorizedRequest })
         );
     }
 
@@ -237,14 +240,13 @@ export default class FetchInterceptor {
 
   shouldFetch(requestContext) {
     const { request } = requestContext;
-    const { shouldFetch } = this.config;
 
     // verifies all outside conditions from config are met
-    if (!shouldFetch) {
+    if (!this.config.shouldFetch) {
       return requestContext;
     }
 
-    return Promise.resolve(shouldFetch(request))
+    return Promise.resolve(this.config.shouldFetch(request))
       .then(shouldFetch =>
         ({ ...requestContext, shouldFetch })
       );
@@ -278,7 +280,6 @@ export default class FetchInterceptor {
 
   shouldInvalidateAccessToken(requestContext) {
     const { shouldIntercept } = requestContext;
-    const { shouldInvalidateAccessToken } = this.config;
 
     if (!shouldIntercept) {
       return requestContext;
@@ -286,7 +287,7 @@ export default class FetchInterceptor {
 
     const { response } = requestContext;
     // check if response invalidates access token
-    return Promise.resolve(shouldInvalidateAccessToken(response))
+    return Promise.resolve(this.config.shouldInvalidateAccessToken(response))
       .then(shouldInvalidateAccessToken =>
         ({ ...requestContext, shouldInvalidateAccessToken })
       );
@@ -311,15 +312,15 @@ export default class FetchInterceptor {
 
   handleResponse(requestContext) {
     const { shouldIntercept, response, fetchResolve, fetchReject } = requestContext;
+    const { isResponseUnauthorized } = this.config;
 
     // can only be empty on network errors
     if (!response) {
-      fetchReject();
-      return;
+      return fetchReject();
     }
 
     if (shouldIntercept && isResponseUnauthorized(response)) {
-      throw new TokenExpiredException({ ...requestContext })
+      throw new TokenExpiredException({ ...requestContext });
     }
 
     if (this.config.onResponse) {
