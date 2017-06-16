@@ -1,5 +1,6 @@
-[![CircleCI](https://circleci.com/gh/shoutem/fetch-token-intercept/tree/master.svg?style=svg)](https://circleci.com/gh/shoutem/fetch-token-intercept/tree/master)
-[![Code Climate](https://codeclimate.com/github/shoutem/fetch-token-intercept/badges/gpa.svg)](https://codeclimate.com/github/shoutem/fetch-token-intercept)
+[![CircleCI](https://img.shields.io/circleci/project/github/shoutem/fetch-token-intercept.svg)](https://github.com/shoutem/fetch-token-intercept)
+[![Code Climate](https://img.shields.io/codeclimate/github/shoutem/fetch-token-intercept.svg)]()
+[![GitHub license](https://img.shields.io/badge/license-New%20BSD-blue.svg)](https://raw.githubusercontent.com/shoutem/fetch-token-intercept/master/LICENSE)
 
 # fetch-token-intercept
 Library for easy renewing of access tokens in OAuth's refresh token flow. This library will monkey
