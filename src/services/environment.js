@@ -14,3 +14,20 @@ export function isWeb() {
 export function isWorker() {
   return typeof importScripts === 'function';
 }
+
+export function resolveEnvironment() {
+  if (isReactNative()) {
+    return global;
+  }
+  if (isWorker()) {
+    return self;
+  }
+  if (isWeb()) {
+    return window;
+  }
+  if (isNode()) {
+    return global;
+  }
+
+  return null;
+}

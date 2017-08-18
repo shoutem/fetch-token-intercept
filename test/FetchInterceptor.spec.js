@@ -1,32 +1,11 @@
 import 'fetch-everywhere';
-import {expect} from 'chai';
+import { expect } from 'chai';
 import * as server from './helpers/server';
-import {delayPromise} from './helpers/promiseHelpers';
-import {formatBearer} from './helpers/tokenFormatter';
-import {ERROR_INVALID_CONFIG} from '../src/const';
+import { delayPromise } from './helpers/promiseHelpers';
+import configuration from './helpers/defaultConfigFactory';
+import { ERROR_INVALID_CONFIG } from '../src/const';
 import * as fetchInterceptor from '../src/index';
 import sinon from 'sinon';
-
-const configuration = config => ({
-  fetchRetryCount: 1,
-  createAccessTokenRequest: refreshToken =>
-    new Request('http://localhost:5000/token', {
-      headers: {
-        authorization: `Bearer ${refreshToken}`
-      }
-    }),
-  shouldIntercept: request => request.url.toString() !== 'http://localhost:5000/token',
-  parseAccessToken: response =>
-    response.json().then(jsonData => jsonData ? jsonData.accessToken : null),
-  authorizeRequest: (request, token) => {
-    request.headers.set('authorization', formatBearer(token));
-    return request;
-  },
-  onAccessTokenChange: null,
-  onResponse: null,
-  isResponseUnauthorized: response => response.status === 401,
-  ...config,
-});
 
 describe('fetch-intercept', function () {
   describe('configure', () => {
@@ -69,6 +48,15 @@ describe('fetch-intercept', function () {
 
       expect(() => fetchInterceptor.configure(config)).to.throw(Error, ERROR_INVALID_CONFIG);
     });
+
+    it('should gracefully handle requests when not configured', done => {
+      fetch('http://localhost:5000/200').then((response) => {
+        expect(response.status).to.be.equal(200);
+        done();
+      }).catch(err => {
+        done(err);
+      })
+    })
   });
 
   describe('authorize', function() {

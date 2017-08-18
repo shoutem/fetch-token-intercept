@@ -5,7 +5,7 @@ export default class RetryCountExceededException extends Error {
     this.requestContext = requestContext;
 
     // Use V8's native method if available, otherwise fallback
-    if ("captureStackTrace" in Error) {
+    if ('captureStackTrace' in Error) {
       Error.captureStackTrace(this, RetryCountExceededException);
     } else {
       this.stack = (new Error()).stack;

@@ -14,11 +14,12 @@ export default class FetchInterceptor {
   constructor(fetch) {
     // stores reference to vanilla fetch method
     this.fetch = fetch;
+    this.accessTokenProvider = new AccessTokenProvider(this.fetch);
 
     this.config = {
       fetchRetryCount: 1,
       createAccessTokenRequest: null,
-      shouldIntercept: () => true,
+      shouldIntercept: () => false,
       shouldInvalidateAccessToken: () => false,
       isResponseUnauthorized: http.isResponseUnauthorized,
       parseAccessToken: null,
@@ -87,7 +88,7 @@ export default class FetchInterceptor {
       throw new Error(ERROR_INVALID_CONFIG);
     }
 
-    this.accessTokenProvider = new AccessTokenProvider(this.fetch, this.config);
+    this.accessTokenProvider.configure(this.config);
   }
 
   /**
@@ -125,9 +126,7 @@ export default class FetchInterceptor {
 
   isConfigValid() {
     return this.config.shouldIntercept &&
-      this.config.authorizeRequest &&
-      this.config.createAccessTokenRequest &&
-      this.config.parseAccessToken;
+      this.config.authorizeRequest;
   }
 
   resolveIntercept(resolve, reject, ...args) {

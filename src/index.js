@@ -1,13 +1,12 @@
 import {
-  isReactNative,
-  isWorker,
-  isWeb,
-  isNode,
+  resolveEnvironment,
 } from './services/environment';
 import { isResponseUnauthorized } from './services/http';
 import FetchInterceptor from './FetchInterceptor';
 
 let interceptor = null;
+let nativeFetch = null;
+let environment = null;
 
 export function attach(env) {
   if (!env.fetch) {
@@ -17,6 +16,8 @@ export function attach(env) {
   if (interceptor) {
     throw Error('You should attach only once.');
   }
+
+  nativeFetch = env.fetch;
 
   // for now add default interceptor
   interceptor = new FetchInterceptor(env.fetch);
@@ -28,38 +29,74 @@ export function attach(env) {
   env.fetch = fetchWrapper(env.fetch);
 }
 
-function init() {
-  if (isReactNative()) {
-    attach(global);
-  } else if (isWorker()) {
-    attach(self);
-  } else if (isWeb()) {
-    attach(window);
-  } else if (isNode()) {
-    attach(global);
-  } else {
+function initialize() {
+  environment = resolveEnvironment();
+  if (!environment) {
     throw new Error('Unsupported environment for fetch-token-intercept');
   }
+
+  attach(environment);
 }
 
+/**
+ * Initializes and configures interceptor
+ * @param config
+ */
 export function configure(config) {
+  if (!interceptor) {
+    initialize();
+  }
+
   interceptor.configure(config);
 }
 
+/**
+ * Initializes tokens which will be used by interceptor
+ * @param args
+ */
 export function authorize(...args) {
   interceptor.authorize(...args);
 }
 
+/**
+ * Returns current set of tokens used by interceptor
+ * @returns {{accessToken: string, refreshToken: string}|*}
+ */
 export function getAuthorization() {
   return interceptor.getAuthorization();
 }
 
+/**
+ * Clears authorization tokens from interceptor
+ */
 export function clear() {
   return interceptor.clear();
+}
+
+/**
+ * Gets a value indicating whether interceptor is currently active
+ * @returns {boolean}
+ */
+export function isActive() {
+  return !!interceptor;
+}
+
+/**
+ * Removes interceptor and restores default behaviour
+ */
+export function unload() {
+  if (interceptor) {
+    interceptor.clear();
+    interceptor = null;
+  }
+
+  if (environment) {
+    environment.fetch = nativeFetch;
+  }
 }
 
 export {
   isResponseUnauthorized,
 };
 
-init();
+initialize();
