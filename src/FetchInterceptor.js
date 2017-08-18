@@ -1,3 +1,4 @@
+import isFunction from 'lodash/isFunction';
 import {
   ERROR_INVALID_CONFIG,
 } from './const';
@@ -7,26 +8,69 @@ import RetryCountExceededException from './services/RetryCountExceededException'
 import AccessTokenProvider from './AccessTokenProvider';
 
 /**
+ * Prepares signed request object which can be used for renewing access token
+ *
+ * @callback createAccessTokenRequest
+ * @param {string} refreshToken Refresh token used to sign the request
+ * @returns {Request} Signed request object which can be used to get access token
+ */
+
+/**
+ * Parses access token from access token response object
+ *
+ * @callback parseAccessToken
+ * @param {Response} response Response object with access token
+ * @returns {string} Access token parsed from response
+ */
+
+/**
+ * Checks whether interceptor will intercept this request or just let it pass through
+ *
+ * @callback shouldIntercept
+ * @param {Request} request Request object
+ * @returns {bool} A value indicating whether this request should be intercepted
+ */
+
+/**
+ * Checks whether provided response invalidates current access token
+ *
+ * @callback shouldInvalidateAccessToken
+ * @param {Response} response Response object
+ * @returns {bool} A value indicating whether token should be invalidated
+ */
+
+/**
+ * Adds authorization for intercepted requests
+ *
+ * @callback authorizeRequest
+ * @param {Request} request Request object being intercepted
+ * @param {string} accessToken Current access token
+ * @returns {Request} Authorized request object
+ */
+
+const getDefaultConfig = () => ({
+  fetchRetryCount: 1,
+  createAccessTokenRequest: null,
+  shouldIntercept: () => false,
+  shouldInvalidateAccessToken: () => false,
+  isResponseUnauthorized: http.isResponseUnauthorized,
+  parseAccessToken: null,
+  authorizeRequest: null,
+  onAccessTokenChange: null,
+  onResponse: null,
+});
+
+/**
  * Provides a default implementation for intercepting fetch requests. It will try to resolve
  * unauthorized responses by renewing the access token and repeating the initial request.
  */
-export default class FetchInterceptor {
+class FetchInterceptor {
   constructor(fetch) {
     // stores reference to vanilla fetch method
     this.fetch = fetch;
     this.accessTokenProvider = new AccessTokenProvider(this.fetch);
 
-    this.config = {
-      fetchRetryCount: 1,
-      createAccessTokenRequest: null,
-      shouldIntercept: () => false,
-      shouldInvalidateAccessToken: () => false,
-      isResponseUnauthorized: http.isResponseUnauthorized,
-      parseAccessToken: null,
-      authorizeRequest: null,
-      onAccessTokenChange: null,
-      onResponse: null,
-    };
+    this.config = getDefaultConfig();
 
     this.intercept = this.intercept.bind(this);
 
@@ -49,37 +93,28 @@ export default class FetchInterceptor {
    * Configures fetch interceptor with given config object. All required properties can optionally
    * return a promise which will be resolved by fetch interceptor automatically.
    *
-   * @param config
-   *
-   * (Required) Prepare fetch request for renewing new access token
-   *   createAccessTokenRequest: (refreshToken) => request,
-   *
-   * (Required) Parses access token from access token response
-   *   parseAccessToken: (response) => accessToken,
-   *
-   * (Required) Defines whether interceptor will intercept this request or just let it pass through
-   *   shouldIntercept: (request) => boolean,
-   *
-   * (Required) Defines whether access token will be invalidated after this response
-   *   shouldInvalidateAccessToken: (response) => boolean,
-   *
-   * (Required) Adds authorization for intercepted requests
-   *   authorizeRequest: (request, accessToken) => authorizedRequest,
-   *
-   * Checks if response should be considered unauthorized (by default only 401 responses are
-   * considered unauthorized. Override this method if you need to trigger token renewal for
-   * other response statuses.
-   *   isResponseUnauthorized: (response) => boolean,
-   *
-   * Number of retries after initial request was unauthorized
-   *   fetchRetryCount: 1,
-   *
-   * Event invoked when access token has changed
-   *   onAccessTokenChange: null,
-   *
-   * Event invoked when response is resolved
-   *   onResponse: null,
-   *
+   * @param {object} config
+   * @param {createAccessTokenRequest} config.createAccessTokenRequest
+   *   Prepare fetch request for renewing new access token
+   * @param {parseAccessToken} config.parseAccessToken
+   *   Parses access token from access token response
+   * @param {shouldIntercept} config.shouldIntercept
+   *   Defines whether interceptor will intercept this request or just let it pass through
+   * @param {shouldInvalidateAccessToken} config.shouldInvalidateAccessToken
+   *   Defines whether access token will be invalidated after this response
+   * @param {authorizeRequest} config.authorizeRequest
+   *   Adds authorization for intercepted requests
+   * @param {function} [config.isResponseUnauthorized=null]
+   *   Checks if response should be considered unauthorized (by default only 401 responses are
+   *   considered unauthorized. Override this method if you need to trigger token renewal for
+   *   other response statuses.
+   * @param {number} [config.fetchRetryCount=1]
+   *   Number of retries after initial request was unauthorized
+   * @param {number} [config.onAccessTokenChange=null]
+   *   Event invoked when access token has changed
+   * @param {number} [config.onResponse=null]
+   *   Event invoked when response is resolved
+   * </pre>
    */
   configure(config) {
     this.config = { ...this.config, ...config };
@@ -93,8 +128,8 @@ export default class FetchInterceptor {
 
   /**
    * Authorizes fetch interceptor with given refresh token
-   * @param refreshToken
-   * @param accessToken
+   * @param {string} refreshToken Refresh token
+   * @param {string} accessToken Access token
    */
   authorize(refreshToken, accessToken) {
     this.accessTokenProvider.authorize(refreshToken, accessToken);
@@ -116,6 +151,15 @@ export default class FetchInterceptor {
   }
 
   /**
+   * Clears current authorization and restores default configuration, e.g. interceptor
+   * will stop intercepting requests.
+   */
+  unload() {
+    this.clear();
+    this.config = getDefaultConfig();
+  }
+
+  /**
    * Main intercept method, you should chain this inside wrapped fetch call
    * @param args Args initially provided to fetch method
    * @returns {Promise} Promise which resolves the same way as fetch would
@@ -125,8 +169,11 @@ export default class FetchInterceptor {
   }
 
   isConfigValid() {
-    return this.config.shouldIntercept &&
-      this.config.authorizeRequest;
+    return this.config.shouldIntercept && isFunction(this.config.shouldIntercept) &&
+      this.config.authorizeRequest && isFunction(this.config.authorizeRequest) &&
+      this.config.isResponseUnauthorized && isFunction(this.config.isResponseUnauthorized) &&
+      this.config.createAccessTokenRequest && isFunction(this.config.createAccessTokenRequest) &&
+      this.config.parseAccessToken && isFunction(this.config.parseAccessToken);
   }
 
   resolveIntercept(resolve, reject, ...args) {
@@ -356,3 +403,5 @@ export default class FetchInterceptor {
     throw new Error(error);
   }
 }
+
+export default FetchInterceptor;

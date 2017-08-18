@@ -57,5 +57,7 @@
     "nock": "^8.0.0",
     "sinon": "^1.17.4"
   },
-  "dependencies": {}
+  "dependencies": {
+    "lodash": "^4.17.4"
+  }
 }

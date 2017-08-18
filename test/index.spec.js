@@ -53,13 +53,4 @@ describe('index', function() {
       expect(accessToken).to.equal('access-token');
     });
   });
-
-  describe('unload', function() {
-    it('should unload and detach interceptor', function (){
-      fetchInterceptor.configure(config());
-      fetchInterceptor.unload();
-
-      expect(fetchInterceptor.isActive()).to.be.false;
-    });
-  });
 });

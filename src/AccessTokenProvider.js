@@ -1,5 +1,3 @@
-import { ERROR_INVALID_CONFIG } from './const';
-
 /**
  * Provides a way for renewing access token with correct refresh token. It will automatically
  * dispatch a call to server with request provided via config. It also ensures that
@@ -7,7 +5,7 @@ import { ERROR_INVALID_CONFIG } from './const';
  * a renewed version of access token at the moment. All subsequent requests will be chained
  * to renewing fetch promise and resolved once the response is received.
  */
-export default class AccessTokenProvider {
+class AccessTokenProvider {
   constructor(fetch, config) {
     this.fetch = fetch;
 
@@ -29,7 +27,6 @@ export default class AccessTokenProvider {
     this.handleFetchAccessTokenResponse = this.handleFetchAccessTokenResponse.bind(this);
     this.handleAccessToken = this.handleAccessToken.bind(this);
     this.handleError = this.handleError.bind(this);
-    this.isConfigValid = this.isConfigValid.bind(this);
   }
 
   /**
@@ -37,12 +34,6 @@ export default class AccessTokenProvider {
    */
   configure(config) {
     this.config = { ...this.config, ...config };
-
-    if (!this.isConfigValid(this.config)) {
-      throw new Error(ERROR_INVALID_CONFIG);
-    }
-
-    this.config = config;
   }
 
   /**
@@ -135,10 +126,6 @@ export default class AccessTokenProvider {
       .then(token => this.handleAccessToken(token, resolve))
       .catch(error => this.handleError(error, reject));
   }
-
-  isConfigValid() {
-    return this.config.isResponseUnauthorized &&
-      this.config.createAccessTokenRequest &&
-      this.config.parseAccessToken;
-  }
 }
+
+export default AccessTokenProvider;

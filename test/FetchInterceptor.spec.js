@@ -82,6 +82,35 @@ describe('fetch-intercept', function () {
     });
   });
 
+  describe('unload', function () {
+    beforeEach(done => {
+      server.start(done);
+    });
+
+    afterEach(done => {
+      server.stop(done);
+    });
+
+    it('should clear authorization tokens and stop intercepting requests', done => {
+      fetchInterceptor.configure(configuration());
+      fetchInterceptor.authorize('refreshToken', 'accessToken');
+      fetchInterceptor.unload();
+
+      // assert that authorization has been cleared
+      const { refreshToken, accessToken } = fetchInterceptor.getAuthorization();
+      expect(refreshToken).to.be.null;
+      expect(accessToken).to.be.null;
+
+      // assert that fetch now works ok without interceptor
+      fetch('http://localhost:5000/200').then((response) => {
+        expect(response.status).to.be.equal(200);
+        done();
+      }).catch(err => {
+        done(err);
+      });
+    });
+  });
+
   describe('should not change default fetch behaviour', () => {
     describe('server is running', () => {
       beforeEach(done => {

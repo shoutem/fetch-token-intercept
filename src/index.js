@@ -5,7 +5,6 @@ import { isResponseUnauthorized } from './services/http';
 import FetchInterceptor from './FetchInterceptor';
 
 let interceptor = null;
-let nativeFetch = null;
 let environment = null;
 
 export function attach(env) {
@@ -16,8 +15,6 @@ export function attach(env) {
   if (interceptor) {
     throw Error('You should attach only once.');
   }
-
-  nativeFetch = env.fetch;
 
   // for now add default interceptor
   interceptor = new FetchInterceptor(env.fetch);
@@ -40,7 +37,8 @@ function initialize() {
 
 /**
  * Initializes and configures interceptor
- * @param config
+ * @param config Configuration object
+ * @see FetchInterceptor#configure
  */
 export function configure(config) {
   if (!interceptor) {
@@ -53,6 +51,7 @@ export function configure(config) {
 /**
  * Initializes tokens which will be used by interceptor
  * @param args
+ * @see FetchInterceptor#authorize
  */
 export function authorize(...args) {
   interceptor.authorize(...args);
@@ -86,12 +85,7 @@ export function isActive() {
  */
 export function unload() {
   if (interceptor) {
-    interceptor.clear();
-    interceptor = null;
-  }
-
-  if (environment) {
-    environment.fetch = nativeFetch;
+    interceptor.unload();
   }
 }
 
