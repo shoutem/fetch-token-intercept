@@ -69,8 +69,8 @@ config: {
 ```
 
 All required methods return a promise to enable reading of request or response body.
-You should avoid reading the body directly on provided requests and responses and instead clone 
-them first. The library does not clone objects to avoid unnecessary overhead in cases where 
+You should avoid reading the body directly on provided requests and responses and instead **clone 
+them first.** The library does not clone objects to avoid unnecessary overhead in cases where 
 reading a body is not required to provide data.
 
 To configure the interceptor you should import and call `configure` function. And when you obtain
@@ -116,6 +116,10 @@ to stop fetch interception.
  `clear()`
  
  Clears all tokens from interceptor.
+ 
+ `unload()`
+  
+  Completely unloads the library and restores initial state.
  
  `isResponseUnauthorized(response)`
  

@@ -5,7 +5,7 @@
  * a renewed version of access token at the moment. All subsequent requests will be chained
  * to renewing fetch promise and resolved once the response is received.
  */
-export default class AccessTokenProvider {
+class AccessTokenProvider {
   constructor(fetch, config) {
     this.fetch = fetch;
 
@@ -27,6 +27,13 @@ export default class AccessTokenProvider {
     this.handleFetchAccessTokenResponse = this.handleFetchAccessTokenResponse.bind(this);
     this.handleAccessToken = this.handleAccessToken.bind(this);
     this.handleError = this.handleError.bind(this);
+  }
+
+  /**
+   * Configures access token provider
+   */
+  configure(config) {
+    this.config = { ...this.config, ...config };
   }
 
   /**
@@ -120,3 +127,5 @@ export default class AccessTokenProvider {
       .catch(error => this.handleError(error, reject));
   }
 }
+
+export default AccessTokenProvider;

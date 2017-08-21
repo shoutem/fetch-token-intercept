@@ -5,7 +5,7 @@ export default class TokenExpiredException extends Error {
     this.name = this.constructor.name;
 
     // Use V8's native method if available, otherwise fallback
-    if ("captureStackTrace" in Error) {
+    if ('captureStackTrace' in Error) {
       Error.captureStackTrace(this, TokenExpiredException);
     } else {
       this.stack = (new Error()).stack;

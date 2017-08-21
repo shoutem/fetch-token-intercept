@@ -1,6 +1,6 @@
 {
   "name": "@shoutem/fetch-token-intercept",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "Fetch interceptor for managing refresh token flow.",
   "main": "lib/index.js",
   "files": [
@@ -57,5 +57,7 @@
     "nock": "^8.0.0",
     "sinon": "^1.17.4"
   },
-  "dependencies": {}
+  "dependencies": {
+    "lodash": "^4.17.4"
+  }
 }
