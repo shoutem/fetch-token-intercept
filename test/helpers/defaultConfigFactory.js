@@ -1,4 +1,4 @@
-import { formatBearer } from './tokenFormatter';
+import formatBearer from './tokenFormatter';
 
 export default function(config) {
   return {

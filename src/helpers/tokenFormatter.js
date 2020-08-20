@@ -1,6 +1,6 @@
 const bearerRegex = /^Bearer (.+)$/;
 
-export function parseBearer(authorizationHeaderValue) {
+export default function parseBearer(authorizationHeaderValue) {
   if (!authorizationHeaderValue || typeof authorizationHeaderValue !== 'string') {
     return null;
   }

@@ -1,7 +1,5 @@
 import isFunction from 'lodash/isFunction';
-import {
-  ERROR_INVALID_CONFIG,
-} from './const';
+import { ERROR_INVALID_CONFIG } from './const';
 import * as http from './services/http';
 import TokenExpiredException from './services/TokenExpiredException';
 import RetryCountExceededException from './services/RetryCountExceededException';
@@ -61,6 +59,39 @@ const getDefaultConfig = () => ({
 });
 
 /**
+ * Request context provides a common object for storing information about request's and response's
+ * results while it passes through a token interception pipeline. It's provided as input for each
+ * stage method in the pipeline and can be used to store results of that stage or read results of
+ * previous stages. Each stage should modify the context accordingly and simple return context
+ * when it's finished.
+ * @param fetchArgs
+ * @param fetchResolve
+ * @param fetchReject
+ */
+function createRequestContext(fetchArgs, fetchResolve, fetchReject) {
+  return {
+    request: null,
+    response: null,
+    shouldIntercept: false,
+    shouldInvalidateAccessToken: false,
+    shouldWaitForTokenRenewal: false,
+    shouldFetch: true,
+    accessToken: null,
+    fetchCount: 0,
+    fetchArgs,
+    fetchResolve,
+    fetchReject,
+  };
+}
+
+function createRequest(requestContext) {
+  const { fetchArgs } = requestContext;
+  const request = new Request(...fetchArgs);
+
+  return { ...requestContext, request };
+}
+
+/**
  * Provides a default implementation for intercepting fetch requests. It will try to resolve
  * unauthorized responses by renewing the access token and repeating the initial request.
  */
@@ -77,8 +108,6 @@ class FetchInterceptor {
     this.resolveIntercept = this.resolveIntercept.bind(this);
     this.fetchWithRetry = this.fetchWithRetry.bind(this);
     this.isConfigValid = this.isConfigValid.bind(this);
-    this.createRequestContext = this.createRequestContext.bind(this);
-    this.createRequest = this.createRequest.bind(this);
     this.shouldIntercept = this.shouldIntercept.bind(this);
     this.authorizeRequest = this.authorizeRequest.bind(this);
     this.shouldFetch = this.shouldFetch.bind(this);
@@ -169,16 +198,21 @@ class FetchInterceptor {
   }
 
   isConfigValid() {
-    return this.config.shouldIntercept && isFunction(this.config.shouldIntercept) &&
-      this.config.authorizeRequest && isFunction(this.config.authorizeRequest) &&
-      this.config.isResponseUnauthorized && isFunction(this.config.isResponseUnauthorized) &&
-      this.config.createAccessTokenRequest && isFunction(this.config.createAccessTokenRequest) &&
-      this.config.parseAccessToken && isFunction(this.config.parseAccessToken);
+    return this.config.shouldIntercept
+      && isFunction(this.config.shouldIntercept)
+      && this.config.authorizeRequest
+      && isFunction(this.config.authorizeRequest)
+      && this.config.isResponseUnauthorized
+      && isFunction(this.config.isResponseUnauthorized)
+      && this.config.createAccessTokenRequest
+      && isFunction(this.config.createAccessTokenRequest)
+      && this.config.parseAccessToken
+      && isFunction(this.config.parseAccessToken);
   }
 
   resolveIntercept(resolve, reject, ...args) {
     const { accessToken } = this.accessTokenProvider.getAuthorization();
-    const requestContext = this.createRequestContext([...args], resolve, reject);
+    const requestContext = createRequestContext([...args], resolve, reject);
 
     // if access token is not resolved yet
     if (!accessToken) {
@@ -197,7 +231,7 @@ class FetchInterceptor {
     // prepare initial request context
     return Promise.resolve(requestContext)
       // create request
-      .then(this.createRequest)
+      .then(createRequest)
       // resolve should intercept flag, when false, step is skipped
       .then(this.shouldIntercept)
       // authorize request
@@ -218,49 +252,11 @@ class FetchInterceptor {
       .catch(this.handleUnauthorizedRequest);
   }
 
-  /**
-   * Request context provides a common object for storing information about request's and response's
-   * results while it passes through a token interception pipeline. It's provided as input for each
-   * stage method in the pipeline and can be used to store results of that stage or read results of
-   * previous stages. Each stage should modify the context accordingly and simple return context
-   * when it's finished.
-   * @param fetchArgs
-   * @param fetchResolve
-   * @param fetchReject
-   */
-  createRequestContext(fetchArgs, fetchResolve, fetchReject) {
-    return {
-      request: null,
-      response: null,
-      shouldIntercept: false,
-      shouldInvalidateAccessToken: false,
-      shouldWaitForTokenRenewal: false,
-      shouldFetch: true,
-      accessToken: null,
-      fetchCount: 0,
-      fetchArgs,
-      fetchResolve,
-      fetchReject,
-    };
-  }
-
-  createRequest(requestContext) {
-    const { fetchArgs } = requestContext;
-    const request = new Request(...fetchArgs);
-
-    return {
-      ...requestContext,
-      request,
-    };
-  }
-
   shouldIntercept(requestContext) {
     const { request } = requestContext;
 
     return Promise.resolve(this.config.shouldIntercept(request))
-      .then(shouldIntercept =>
-        ({ ...requestContext, shouldIntercept })
-      );
+      .then(shouldIntercept => ({ ...requestContext, shouldIntercept }));
   }
 
   authorizeRequest(requestContext) {
@@ -276,9 +272,9 @@ class FetchInterceptor {
 
     if (request && accessToken) {
       return Promise.resolve(authorizeRequest(request, accessToken))
-        .then(authorizedRequest =>
-          ({ ...requestContext, accessToken, request: authorizedRequest })
-        );
+        .then(authorizedRequest => (
+          { ...requestContext, accessToken, request: authorizedRequest }
+        ));
     }
 
     return requestContext;
@@ -293,9 +289,7 @@ class FetchInterceptor {
     }
 
     return Promise.resolve(this.config.shouldFetch(request))
-      .then(shouldFetch =>
-        ({ ...requestContext, shouldFetch })
-      );
+      .then(shouldFetch => ({ ...requestContext, shouldFetch }));
   }
 
   fetchRequest(requestContext) {
@@ -315,13 +309,11 @@ class FetchInterceptor {
 
     const { fetch } = this;
     return Promise.resolve(fetch(request))
-      .then(response =>
-        ({
-          ...requestContext,
-          response,
-          fetchCount: fetchCount + 1,
-        })
-      );
+      .then(response => ({
+        ...requestContext,
+        response,
+        fetchCount: fetchCount + 1,
+      }));
   }
 
   shouldInvalidateAccessToken(requestContext) {
@@ -334,9 +326,10 @@ class FetchInterceptor {
     const { response } = requestContext;
     // check if response invalidates access token
     return Promise.resolve(this.config.shouldInvalidateAccessToken(response))
-      .then(shouldInvalidateAccessToken =>
-        ({ ...requestContext, shouldInvalidateAccessToken })
-      );
+      .then(shouldInvalidateAccessToken => ({
+        ...requestContext,
+        shouldInvalidateAccessToken,
+      }));
   }
 
   invalidateAccessToken(requestContext) {
@@ -357,7 +350,12 @@ class FetchInterceptor {
   }
 
   handleResponse(requestContext) {
-    const { shouldIntercept, response, fetchResolve, fetchReject } = requestContext;
+    const {
+      shouldIntercept,
+      response,
+      fetchResolve,
+      fetchReject,
+    } = requestContext;
     const { isResponseUnauthorized } = this.config;
 
     // can only be empty on network errors
