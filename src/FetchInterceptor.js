@@ -1,4 +1,5 @@
 import isFunction from 'lodash/isFunction';
+import autoBind from 'auto-bind';
 import { ERROR_INVALID_CONFIG } from './const';
 import * as http from './services/http';
 import TokenExpiredException from './services/TokenExpiredException';
@@ -103,19 +104,7 @@ class FetchInterceptor {
 
     this.config = getDefaultConfig();
 
-    this.intercept = this.intercept.bind(this);
-
-    this.resolveIntercept = this.resolveIntercept.bind(this);
-    this.fetchWithRetry = this.fetchWithRetry.bind(this);
-    this.isConfigValid = this.isConfigValid.bind(this);
-    this.shouldIntercept = this.shouldIntercept.bind(this);
-    this.authorizeRequest = this.authorizeRequest.bind(this);
-    this.shouldFetch = this.shouldFetch.bind(this);
-    this.fetchRequest = this.fetchRequest.bind(this);
-    this.shouldInvalidateAccessToken = this.shouldInvalidateAccessToken.bind(this);
-    this.invalidateAccessToken = this.invalidateAccessToken.bind(this);
-    this.handleUnauthorizedRequest = this.handleUnauthorizedRequest.bind(this);
-    this.handleResponse = this.handleResponse.bind(this);
+    autobind(this);
   }
 
   /**

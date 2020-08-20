@@ -58,6 +58,7 @@
     "sinon": "^1.17.4"
   },
   "dependencies": {
+    "autobind": "~4.0.0",
     "babel-register": "^6.9.0",
     "lodash": "^4.17.4"
   }
