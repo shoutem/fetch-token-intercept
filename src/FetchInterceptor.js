@@ -104,7 +104,7 @@ class FetchInterceptor {
 
     this.config = getDefaultConfig();
 
-    autobind(this);
+    autoBind(this);
   }
 
   /**
