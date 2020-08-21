@@ -20,6 +20,7 @@ export function resolveEnvironment() {
     return global;
   }
   if (isWorker()) {
+    // eslint-disable-next-line
     return self;
   }
   if (isWeb()) {

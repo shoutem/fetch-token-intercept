@@ -1,6 +1,6 @@
 import { expect } from 'chai';
-import { parseBearer } from '../../src/helpers/tokenFormatter';
-import { formatBearer } from '../helpers/tokenFormatter';
+import parseBearer from '../../src/helpers/tokenFormatter';
+import formatBearer from '../helpers/tokenFormatter';
 
 describe('token formatter', () => {
   describe('formatBearer', () => {

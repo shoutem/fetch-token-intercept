@@ -1,5 +1,5 @@
 {
-  "parser"  : "babel-eslint",
+  "parser": "babel-eslint",
   "extends": "airbnb",
   "parserOptions": {
     "ecmaVersion": 6,
@@ -8,18 +8,22 @@
       "jsx": false
     }
   },
-  "plugins" : [
+  "plugins": [
     "flow-vars"
   ],
-  "env"     : {
-    "browser" : true,
-    "mocha": true,
+  "env": {
+    "browser": true,
+    "mocha": true
   },
   "rules": {
+    "global-require": 0,
+    "import/no-unresolved": 0,
+    "no-console": 0,
     "no-empty-label": 0,
-    "space-before-keywords": 0,
+    "no-iterator": 0,
+    "no-underscore-dangle": 0,
     "space-after-keywords": 0,
-    "space-return-throw-case": 0,
-    "no-iterator": 0
+    "space-before-keywords": 0,
+    "space-return-throw-case": 0
   }
 }

@@ -1,4 +1,4 @@
-export function formatBearer(token) {
+export default function formatBearer(token) {
   if (!token) {
     return null;
   }

@@ -1,3 +1,4 @@
+import autoBind from 'auto-bind';
 /**
  * Provides a way for renewing access token with correct refresh token. It will automatically
  * dispatch a call to server with request provided via config. It also ensures that
@@ -16,17 +17,7 @@ class AccessTokenProvider {
       accessToken: null,
     };
 
-    this.renew = this.renew.bind(this);
-    this.authorize = this.authorize.bind(this);
-    this.getAuthorization = this.getAuthorization.bind(this);
-    this.clear = this.clear.bind(this);
-
-    this.isAuthorized = this.isAuthorized.bind(this);
-    this.resolveAccessToken = this.resolveAccessToken.bind(this);
-    this.fetchAccessToken = this.fetchAccessToken.bind(this);
-    this.handleFetchAccessTokenResponse = this.handleFetchAccessTokenResponse.bind(this);
-    this.handleAccessToken = this.handleAccessToken.bind(this);
-    this.handleError = this.handleError.bind(this);
+    autoBind(this);
   }
 
   /**
