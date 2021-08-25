@@ -1,20 +1,21 @@
-[![CircleCI](https://img.shields.io/circleci/project/github/shoutem/fetch-token-intercept.svg)](https://github.com/shoutem/fetch-token-intercept)
 [![Code Climate](https://img.shields.io/codeclimate/github/shoutem/fetch-token-intercept.svg)]()
 [![GitHub license](https://img.shields.io/badge/license-New%20BSD-blue.svg)](https://raw.githubusercontent.com/shoutem/fetch-token-intercept/master/LICENSE)
 
 # fetch-token-intercept
+
 Library for easy renewing of access tokens in OAuth's refresh token flow. This library will monkey
 patch fetch on your target environment and will try to resolve unauthorized requests automatically
 by renewing the current access token and then retrying an initial fetch operation.
 
 If you are not familiar with refresh token flow you should check some of the following resources:
+
 - [RFC standards track regarding refresh token flow](https://tools.ietf.org/html/rfc6749#page-10)
 - [Auth0 blog - Refresh Tokens: When to Use Them and How They Interact with JWTs](https://auth0.com/blog/refresh-tokens-what-are-they-and-when-to-use-them/)
 - [Shoutem blog - Keeping your tokens fresh](https://medium.com/shoutem/keeping-your-api-tokens-fresh-72059a7b0586)
 
->Note:
-This library expects that fetch and promise api's are available at target environment. You should
-provide a polyfill when necessary.
+> Note:
+> This library expects that fetch and promise api's are available at target environment. You should
+> provide a polyfill when necessary.
 
 ## Installation
 
@@ -35,42 +36,42 @@ Configuration is provided via `config` object:
 config: {
   // (Required) Prepare fetch request for renewing new access token
   createAccessTokenRequest: (refreshToken) => request,
-   
+
   // (Required) Parses access token from access token response
   parseAccessToken: (response) => accessToken,
-   
+
   // (Required) Defines whether interceptor will intercept this request or just let it pass through
   shouldIntercept: (request) => boolean,
-   
+
   // (Required) Defines whether access token will be invalidated after this response
   shouldInvalidateAccessToken: (response) => boolean,
-  
+
   // When set, response which invalidates token will be resolved after the token has been renewed
   // in effect, token will be loaded in sync with response, otherwise renew will run async to response
   shouldWaitForTokenRenewal: boolean,
-  
-  // Checks if response should be considered unauthorized (by default only 401 responses are 
-  // considered unauthorized). Override this method if you need to trigger token renewal for 
+
+  // Checks if response should be considered unauthorized (by default only 401 responses are
+  // considered unauthorized). Override this method if you need to trigger token renewal for
   // other response statuses. Check API reference for helper method which defines default behaviour
   isResponseUnauthorized: (response) => boolean,
-   
+
   // (Required) Adds authorization for intercepted requests
   authorizeRequest: (request, accessToken) => authorizedRequest,
-   
+
   // Number of retries after initial request was unauthorized
   fetchRetryCount: 1,
-  
+
   // Event invoked when access token has changed
   onAccessTokenChange: null,
-   
+
   // Event invoked when response is resolved
   onResponse: null,
 }
 ```
 
 All required methods return a promise to enable reading of request or response body.
-You should avoid reading the body directly on provided requests and responses and instead **clone 
-them first.** The library does not clone objects to avoid unnecessary overhead in cases where 
+You should avoid reading the body directly on provided requests and responses and instead **clone
+them first.** The library does not clone objects to avoid unnecessary overhead in cases where
 reading a body is not required to provide data.
 
 To configure the interceptor you should import and call `configure` function. And when you obtain
@@ -105,36 +106,36 @@ to stop fetch interception.
 ## API reference <a name="api-reference"></a>
 
 ### Exports
- `configure(configuration)`
- 
- Configures fetch token interceptor with provided configuration object.
- 
- `authorize(refreshToken, accessToken)` 
-  
-  Authorizes fetch token interceptor with provided tokens.
-  
- `clear()`
- 
- Clears all tokens from interceptor.
- 
- `unload()`
-  
-  Completely unloads the library and restores initial state.
- 
- `isResponseUnauthorized(response)`
- 
- Utility method which determines if given response should be considered unauthorized. 
- By default, responses with status code `401` are considered unauthorized.
- You can use this method in `isResponseUnauthorized` of `config` object 
- when you want to extend default behaviour.
- 
- 
+
+`configure(configuration)`
+
+Configures fetch token interceptor with provided configuration object.
+
+`authorize(refreshToken, accessToken)`
+
+Authorizes fetch token interceptor with provided tokens.
+
+`clear()`
+
+Clears all tokens from interceptor.
+
+`unload()`
+
+Completely unloads the library and restores initial state.
+
+`isResponseUnauthorized(response)`
+
+Utility method which determines if given response should be considered unauthorized.
+By default, responses with status code `401` are considered unauthorized.
+You can use this method in `isResponseUnauthorized` of `config` object
+when you want to extend default behaviour.
+
 ## Tests
 
 ```
 $ npm install && npm run test
-``` 
+```
 
 ## License
- 
- BSD
+
+BSD
